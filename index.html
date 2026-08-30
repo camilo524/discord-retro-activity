@@ -23,19 +23,18 @@
   <div id="game"></div>
 
   <script>
-    // Configuración de EmulatorJS
     EJS_player = "#game";
     EJS_core = "nes";
-    EJS_gameUrl = "./roms/contra.nes";          // ← asegúrate que el archivo exista
-    EJS_pathtodata = "https://cdn.emulatorjs.org/stable/data/";
+    EJS_gameUrl = "./roms/contra.nes";
+    // ← Ahora usamos la ruta mapeada
+    EJS_pathtodata = "/emulatorjs/stable/data/";
     EJS_startOnLoaded = true;
     EJS_color = "#000000";
   </script>
 
-  <!-- Loader estático (más fiable dentro de Discord) -->
-  <script src="https://cdn.emulatorjs.org/stable/data/loader.js"></script>
+  <!-- También cambiamos el src del loader -->
+  <script src="/emulatorjs/stable/data/loader.js"></script>
 
-  <!-- SDK de Discord (opcional por ahora) -->
   <script type="module" src="./app.js"></script>
 </body>
 </html>
