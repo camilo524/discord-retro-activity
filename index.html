@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Discord Retro Activity</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #000;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        #game {
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div id="game"></div>
+
+    <!-- Script de configuración de EmulatorJS -->
+    <script type="text/javascript">
+        EJS_player = "#game";
+        EJS_core = "nes";
+        EJS_gameUrl = "./roms/contra.nes";
+        EJS_pathtodata = "https://cdn.emulatorjs.org/stable/data/";
+    </script>
+    <script src="https://cdn.emulatorjs.org/stable/data/loader.js"></script>
+
+    <!-- Tu script de integración con Discord -->
+    <script type="module" src="./app.js"></script>
+</body>
+</html>
