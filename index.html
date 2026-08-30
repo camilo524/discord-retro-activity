@@ -149,41 +149,51 @@
     }
 
     /* ============================================
-       MOVER CONTROLES DE EMULATORJS
-       para que no los tape el botón de salir de Discord
-       ============================================ */
+   SOLO CONTROLES MÓVILES
+   No toca el menú de iconos de PC
+   ============================================ */
 
-    /* Menú de 3 líneas → lo bajamos y lo movemos a la izquierda */
-    .ejs_virtualGamepad_open,
-    .ejs_menu_button,
-    .ejs_menu_bar,
-    [class*="ejs_menu"] {
-      top: 55px !important;
-      right: 55px !important;
+    /* Menú de 3 líneas (solo el botón flotante) */
+    .ejs_virtualGamepad_open {
+      top: auto !important;
+      bottom: 160px !important;
+      right: 22px !important;
       left: auto !important;
+      z-index: 100 !important;
     }
-
-    /* Contenedor de botones de acción (A/B) → más abajo */
+    
+    /* Contenedor de botones A / B */
     .ejs_virtualGamepad_right {
-      bottom: 30px !important;
-      right: 20px !important;
+      bottom: 40px !important;
+      right: 12px !important;
+      display: flex !important;
+      flex-direction: column-reverse !important;
+      align-items: center !important;
+      gap: 12px !important;
+      height: auto !important;
+      width: auto !important;
     }
-
-    /* D-Pad → un poco más abajo también */
+    
+    /* Cada botón A y B */
+    .ejs_virtualGamepad_right .ejs_virtualGamepad_button {
+      position: relative !important;
+      left: auto !important;
+      top: auto !important;
+      right: auto !important;
+      bottom: auto !important;
+      margin: 0 !important;
+    }
+    
+    /* D-Pad (izquierda) */
     .ejs_virtualGamepad_left {
-      bottom: 30px !important;
-      left: 15px !important;
+      bottom: 40px !important;
+      left: 12px !important;
     }
 
-    /* Zona inferior (Start/Select) */
-    .ejs_virtualGamepad_bottom {
-      bottom: 8px !important;
-    }
-
-    /* Contenedor general del gamepad */
-    .ejs_virtualGamepad_parent {
-      bottom: 20px !important;
-    }
+/* Start / Select (abajo centro) */
+.ejs_virtualGamepad_bottom {
+  bottom: 10px !important;
+}
   </style>
 </head>
 <body>
