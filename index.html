@@ -1,40 +1,73 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Discord Retro Activity</title>
-    <style>
-        body, html {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            background-color: #000;
-            overflow: hidden;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-        #game {
-            width: 100%;
-            height: 100%;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Discord Retro Activity</title>
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      background: #000;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-family: system-ui, sans-serif;
+    }
+    #game {
+      width: 100%;
+      height: 100%;
+    }
+    /* Overlay simple de carga */
+    #loading {
+      position: absolute;
+      color: white;
+      font-size: 1.2rem;
+      z-index: 10;
+    }
+  </style>
 </head>
 <body>
-    <div id="game"></div>
+  <div id="loading">Cargando emulador...</div>
+  <div id="game"></div>
 
-    <!-- Script de configuración de EmulatorJS -->
-    <script type="text/javascript">
-        EJS_player = "#game";
-        EJS_core = "nes";
-        EJS_gameUrl = "./roms/contra.nes";
-        EJS_pathtodata = "https://cdn.emulatorjs.org/stable/data/";
-    </script>
-    <script src="https://cdn.emulatorjs.org/stable/data/loader.js"></script>
+  <script type="text/javascript">
+    // === Configuración de EmulatorJS ===
+    EJS_player = "#game";
+    EJS_core = "nes";                          // puedes cambiar a snes, gba, etc.
+    EJS_gameUrl = "./roms/contra.nes";         // o hazlo dinámico
+    EJS_pathtodata = "https://cdn.emulatorjs.org/stable/data/";
+    EJS_startOnLoaded = true;
+    EJS_gameID = 1;                            // ← obligatorio para netplay (único por juego)
 
-    <!-- Tu script de integración con Discord -->
-    <script type="module" src="./app.js"></script>
+    // === Netplay (multijugador) ===
+    // Opción A: usar el servidor oficial de EmulatorJS (fácil para pruebas)
+    EJS_netplayServer = "https://netplay.emulatorjs.org/";
+
+    // Opción B (recomendada a largo plazo): tu propio servidor
+    // EJS_netplayServer = "https://netplay.camiloh.co/";
+
+    // ICE servers (STUN gratis de Google + TURN público)
+    EJS_netplayICEServers = [
+      { urls: "stun:stun.l.google.com:19302" },
+      { urls: "stun:stun1.l.google.com:19302" },
+      { urls: "turn:openrelay.metered.ca:80", username: "openrelayproject", credential: "openrelayproject" },
+      { urls: "turn:openrelay.metered.ca:443", username: "openrelayproject", credential: "openrelayproject" },
+    ];
+
+    // Cuando termine de cargar
+    EJS_onGameStart = function() {
+      document.getElementById("loading").style.display = "none";
+      console.log("Juego iniciado");
+    };
+  </script>
+
+  <script src="https://cdn.emulatorjs.org/stable/data/loader.js"></script>
+
+  <!-- SDK de Discord -->
+  <script type="module" src="./app.js"></script>
 </body>
 </html>
