@@ -341,31 +341,49 @@
 
     // Ajuste extra por si el CSS no alcanza
     function fixControlPositions() {
-      // Menú de 3 líneas
-      const menuBtns = document.querySelectorAll(
-        '.ejs_virtualGamepad_open, .ejs_menu_button, [class*="ejs_menu"]'
-      );
-      menuBtns.forEach(el => {
-        el.style.top = "55px";
-        el.style.right = "55px";
-        el.style.left = "auto";
-        el.style.zIndex = "100";
-      });
-
-      // Botones A/B
-      const rightPad = document.querySelector(".ejs_virtualGamepad_right");
-      if (rightPad) {
-        rightPad.style.bottom = "30px";
-        rightPad.style.right = "20px";
-      }
-
-      // D-Pad
-      const leftPad = document.querySelector(".ejs_virtualGamepad_left");
-      if (leftPad) {
-        leftPad.style.bottom = "30px";
-        leftPad.style.left = "15px";
-      }
+    // Solo el botón de 3 líneas (móvil)
+    const openBtn = document.querySelector(".ejs_virtualGamepad_open");
+    if (openBtn) {
+      openBtn.style.top = "auto";
+      openBtn.style.bottom = "160px";
+      openBtn.style.right = "22px";
+      openBtn.style.left = "auto";
+      openBtn.style.zIndex = "100";
     }
+  
+    // Contenedor A/B → columna vertical alineada
+    const rightPad = document.querySelector(".ejs_virtualGamepad_right");
+    if (rightPad) {
+      rightPad.style.bottom = "40px";
+      rightPad.style.right = "12px";
+      rightPad.style.display = "flex";
+      rightPad.style.flexDirection = "column-reverse";
+      rightPad.style.alignItems = "center";
+      rightPad.style.gap = "12px";
+      rightPad.style.height = "auto";
+      rightPad.style.width = "auto";
+    }
+  
+    // Botones individuales dentro de A/B
+    const buttons = document.querySelectorAll(
+      ".ejs_virtualGamepad_right .ejs_virtualGamepad_button"
+    );
+    buttons.forEach((btn) => {
+      btn.style.position = "relative";
+      btn.style.left = "auto";
+      btn.style.top = "auto";
+      btn.style.right = "auto";
+      btn.style.bottom = "auto";
+      btn.style.margin = "0";
+    });
+  
+    // D-Pad
+    const leftPad = document.querySelector(".ejs_virtualGamepad_left");
+    if (leftPad) {
+      leftPad.style.bottom = "40px";
+      leftPad.style.left = "12px";
+    }
+  }
 
     window.addEventListener("discord-ready", () => {
       console.log("Discord listo");
