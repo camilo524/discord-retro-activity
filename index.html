@@ -15,6 +15,7 @@
       overflow: hidden;
     }
 
+    /* ===== MENÚ ===== */
     #menu {
       position: absolute;
       inset: 0;
@@ -64,6 +65,7 @@
       transform: translateY(-5px);
       box-shadow: 0 10px 25px rgba(88, 101, 242, 0.25);
     }
+    .game-card:active { transform: translateY(-2px); }
     .game-card .cover {
       width: 100%;
       aspect-ratio: 1;
@@ -74,18 +76,27 @@
       justify-content: center;
       font-size: 2.4rem;
       margin-bottom: 10px;
+      overflow: hidden;
+    }
+    .game-card .cover img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
     }
     .game-card .name {
       font-size: 0.88rem;
       font-weight: 600;
+      line-height: 1.25;
     }
     .game-card .core {
       font-size: 0.68rem;
       color: #64748b;
       margin-top: 3px;
       text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
 
+    /* ===== LOADING ===== */
     #loading {
       position: absolute;
       inset: 0;
@@ -106,66 +117,113 @@
       animation: spin 0.8s linear infinite;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
-    #loading p { color: #94a3b8; font-size: 0.95rem; }
+    #loading p {
+      color: #94a3b8;
+      font-size: 0.95rem;
+    }
 
+    /* ===== EMULADOR ===== */
     #game-container {
       position: absolute;
       inset: 0;
       display: none;
       background: #000;
     }
-    #game { width: 100%; height: 100%; }
+    #game {
+      width: 100%;
+      height: 100%;
+    }
 
+    /* Botón volver */
     #btn-back {
       position: absolute;
       top: 12px;
       left: 12px;
-      z-index: 9999 !important;
-      background: rgba(88, 101, 242, 0.95);
+      z-index: 50;
+      background: rgba(0, 0, 0, 0.75);
       color: #fff;
-      border: none;
-      padding: 10px 16px;
-      border-radius: 10px;
+      border: 1px solid #444;
+      padding: 8px 14px;
+      border-radius: 8px;
       cursor: pointer;
-      font-size: 0.9rem;
-      font-weight: 600;
+      font-size: 0.85rem;
+      font-weight: 500;
       display: none;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+      backdrop-filter: blur(6px);
+      transition: background 0.15s;
+    }
+    #btn-back:hover {
+      background: rgba(88, 101, 242, 0.85);
+      border-color: #5865f2;
     }
   </style>
 </head>
 <body>
 
+  <!-- MENÚ DE SELECCIÓN -->
   <div id="menu">
     <h1>🕹️ Retro Activity</h1>
-    <p class="subtitle">Elige un juego</p>
+    <p class="subtitle">Elige un juego · Multijugador automático con la sala</p>
     <div class="games-grid" id="games-grid"></div>
   </div>
 
+  <!-- LOADING -->
   <div id="loading">
     <div class="spinner"></div>
     <p>Cargando emulador...</p>
   </div>
 
-  <button id="btn-back">← Cambiar juego</button>
+  <!-- BOTÓN CAMBIAR JUEGO -->
+  <button id="btn-back" onclick="backToMenu()">← Cambiar juego</button>
 
+  <!-- CONTENEDOR DEL JUEGO -->
   <div id="game-container">
     <div id="game"></div>
   </div>
 
   <script>
+    // =============================================
+    //  LISTA DE JUEGOS  (añade más aquí)
+    // =============================================
     const GAMES = [
-      { id: 1, name: "Contra", core: "nes", rom: "./roms/contra.nes", emoji: "🔫" },
-      { id: 2, name: "Super Mario Bros", core: "nes", rom: "./roms/super-mario-bros.nes", emoji: "🍄" },
-      { id: 3, name: "The Legend of Zelda", core: "nes", rom: "./roms/zelda.nes", emoji: "🗡️" }
+      {
+        id: 1,
+        name: "Contra",
+        core: "nes",
+        rom: "./roms/contra.nes",
+        emoji: "🔫"
+      },
+      {
+        id: 2,
+        name: "Super Mario Bros",
+        core: "nes",
+        rom: "./roms/super-mario-bros.nes",
+        emoji: "🍄"
+      },
+      {
+        id: 3,
+        name: "The Legend of Zelda",
+        core: "nes",
+        rom: "./roms/zelda.nes",
+        emoji: "🗡️"
+      },
+      // Ejemplo para añadir más:
+      // {
+      //   id: 4,
+      //   name: "Super Mario World",
+      //   core: "snes",
+      //   rom: "./roms/super-mario-world.sfc",
+      //   emoji: "🦕"
+      // },
     ];
 
+    // Renderizar tarjetas
     const grid = document.getElementById("games-grid");
     GAMES.forEach(game => {
       const card = document.createElement("div");
       card.className = "game-card";
       card.innerHTML = `
-        <div class="cover">${game.emoji}</div>
+        <div class="cover">${game.emoji || "🎮"}</div>
         <div class="name">${game.name}</div>
         <div class="core">${game.core}</div>
       `;
@@ -173,84 +231,82 @@
       grid.appendChild(card);
     });
 
-    // Botón volver
-    function backToMenu() {
-      const url = new URL(window.location.href);
-      url.searchParams.set("t", Date.now());
-      window.location.href = url.toString();
-    }
-    const btnBack = document.getElementById("btn-back");
-    btnBack.addEventListener("click", backToMenu);
-    btnBack.addEventListener("touchend", (e) => {
-      e.preventDefault();
-      backToMenu();
-    });
-
+    // =============================================
+    //  LÓGICA DEL EMULADOR
+    // =============================================
     function startGame(game) {
+      // Mostrar loading
       document.getElementById("menu").style.display = "none";
       document.getElementById("loading").style.display = "flex";
       document.getElementById("btn-back").style.display = "none";
       document.getElementById("game-container").style.display = "block";
 
-      // Configuración limpia de EmulatorJS
+      // Configuración de EmulatorJS
       window.EJS_player = "#game";
       window.EJS_core = game.core;
       window.EJS_gameUrl = game.rom;
-      window.EJS_pathtodata = "/emulatorjs/stable/data/";
+      window.EJS_pathtodata = "/emulatorjs/stable/data/";   // ruta mapeada
       window.EJS_startOnLoaded = true;
       window.EJS_color = "#000000";
-      window.EJS_gameID = game.id;
-      window.EJS_gameName = game.name;
+      window.EJS_gameID = game.id;                         // necesario para netplay
 
-      // Controles por defecto
-      window.EJS_defaultControls = {
-        0: {
-          0: { value: "x", value2: "BUTTON_2" },
-          8: { value: "z", value2: "BUTTON_1" },
-          2: { value: "shift", value2: "SELECT" },
-          3: { value: "enter", value2: "START" },
-          4: { value: "up arrow", value2: "DPAD_UP" },
-          5: { value: "down arrow", value2: "DPAD_DOWN" },
-          6: { value: "left arrow", value2: "DPAD_LEFT" },
-          7: { value: "right arrow", value2: "DPAD_RIGHT" }
-        }
-      };
-
-      // Netplay (manual)
+      // ===== MULTIJUGADOR AUTOMÁTICO =====
+      // Usamos el instanceId de Discord como identificador de sala
+      const roomId = window.discordInstanceId || ("solo-" + Date.now());
       window.EJS_netplayServer = "https://netplay.emulatorjs.org/";
       window.EJS_netplayICEServers = [
         { urls: "stun:stun.l.google.com:19302" },
-        { urls: "stun:stun1.l.google.com:19302" }
+        { urls: "stun:stun1.l.google.com:19302" },
+        {
+          urls: "turn:openrelay.metered.ca:80",
+          username: "openrelayproject",
+          credential: "openrelayproject"
+        },
+        {
+          urls: "turn:openrelay.metered.ca:443",
+          username: "openrelayproject",
+          credential: "openrelayproject"
+        }
       ];
+
+      if (window.discordUser?.username) {
+        window.EJS_playerName = window.discordUser.username;
+      }
 
       window.EJS_onGameStart = function () {
         document.getElementById("loading").style.display = "none";
         document.getElementById("btn-back").style.display = "block";
-        console.log("✅ Juego iniciado:", game.name);
+        console.log("✅ Juego iniciado:", game.name, "| Room:", roomId);
       };
 
-      // Cargar loader solo una vez
+      // Cargar el loader de EmulatorJS
       if (!window.__ejsLoaded) {
         const script = document.createElement("script");
         script.src = "/emulatorjs/stable/data/loader.js";
-        script.onload = () => {
-          window.__ejsLoaded = true;
-          console.log("Loader de EmulatorJS cargado");
-        };
+        script.onload = () => { window.__ejsLoaded = true; };
         script.onerror = () => {
           document.getElementById("loading").innerHTML = `
             <p style="color:#f87171">Error cargando el emulador</p>
-            <p style="font-size:0.85rem;color:#94a3b8">Revisa el URL Mapping /emulatorjs</p>
+            <p style="font-size:0.85rem;color:#94a3b8">Revisa el URL Mapping de /emulatorjs</p>
           `;
         };
         document.body.appendChild(script);
       } else {
-        // Ya estaba cargado → recargar limpio
-        const url = new URL(window.location.href);
-        url.searchParams.set("t", Date.now());
-        window.location.href = url.toString();
+        // Si ya estaba cargado, la forma más fiable es recargar
+        // (EmulatorJS no tiene un API limpio para cambiar de ROM)
+        location.reload();
       }
     }
+
+    function backToMenu() {
+      // La forma más limpia y estable de volver al menú
+      location.reload();
+    }
+
+    // Cuando el SDK de Discord esté listo
+    window.addEventListener("discord-ready", () => {
+      console.log("Discord listo → instanceId disponible para netplay");
+    });
   </script>
 
   <script type="module" src="./app.js"></script>
