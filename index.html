@@ -78,11 +78,6 @@
       margin-bottom: 10px;
       overflow: hidden;
     }
-    .game-card .cover img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
     .game-card .name {
       font-size: 0.88rem;
       font-weight: 600;
@@ -134,27 +129,26 @@
       height: 100%;
     }
 
-    /* Botón volver */
+    /* Botón Cambiar juego - z-index muy alto para que no lo tape nada */
     #btn-back {
       position: absolute;
       top: 12px;
       left: 12px;
-      z-index: 50;
-      background: rgba(0, 0, 0, 0.75);
+      z-index: 9999 !important;
+      background: rgba(88, 101, 242, 0.9);
       color: #fff;
-      border: 1px solid #444;
-      padding: 8px 14px;
-      border-radius: 8px;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 10px;
       cursor: pointer;
-      font-size: 0.85rem;
-      font-weight: 500;
+      font-size: 0.9rem;
+      font-weight: 600;
       display: none;
       backdrop-filter: blur(6px);
-      transition: background 0.15s;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
     }
     #btn-back:hover {
-      background: rgba(88, 101, 242, 0.85);
-      border-color: #5865f2;
+      background: rgba(88, 101, 242, 1);
     }
   </style>
 </head>
@@ -163,7 +157,7 @@
   <!-- MENÚ DE SELECCIÓN -->
   <div id="menu">
     <h1>🕹️ Retro Activity</h1>
-    <p class="subtitle">Elige un juego · Multijugador automático con la sala</p>
+    <p class="subtitle">Elige un juego · Multijugador desde el menú del emulador (🌐)</p>
     <div class="games-grid" id="games-grid"></div>
   </div>
 
@@ -174,7 +168,7 @@
   </div>
 
   <!-- BOTÓN CAMBIAR JUEGO -->
-  <button id="btn-back" onclick="backToMenu()">← Cambiar juego</button>
+  <button id="btn-back">← Cambiar juego</button>
 
   <!-- CONTENEDOR DEL JUEGO -->
   <div id="game-container">
@@ -206,15 +200,7 @@
         core: "nes",
         rom: "./roms/zelda.nes",
         emoji: "🗡️"
-      },
-      // Ejemplo para añadir más:
-      // {
-      //   id: 4,
-      //   name: "Super Mario World",
-      //   core: "snes",
-      //   rom: "./roms/super-mario-world.sfc",
-      //   emoji: "🦕"
-      // },
+      }
     ];
 
     // Renderizar tarjetas
@@ -232,6 +218,24 @@
     });
 
     // =============================================
+    //  BOTÓN CAMBIAR JUEGO (versión que sí funciona)
+    // =============================================
+    const btnBack = document.getElementById("btn-back");
+
+    function backToMenu() {
+      // Método más fiable dentro de Discord Activities
+      const url = new URL(window.location.href);
+      url.searchParams.set("t", Date.now());
+      window.location.href = url.toString();
+    }
+
+    btnBack.addEventListener("click", backToMenu);
+    btnBack.addEventListener("touchend", (e) => {
+      e.preventDefault();
+      backToMenu();
+    });
+
+    // =============================================
     //  LÓGICA DEL EMULADOR
     // =============================================
     function startGame(game) {
@@ -241,18 +245,91 @@
       document.getElementById("btn-back").style.display = "none";
       document.getElementById("game-container").style.display = "block";
 
-      // Configuración de EmulatorJS
+      // Configuración básica de EmulatorJS
       window.EJS_player = "#game";
       window.EJS_core = game.core;
       window.EJS_gameUrl = game.rom;
-      window.EJS_pathtodata = "/emulatorjs/stable/data/";   // ruta mapeada
+      window.EJS_pathtodata = "/emulatorjs/stable/data/";
       window.EJS_startOnLoaded = true;
       window.EJS_color = "#000000";
-      window.EJS_gameID = game.id;                         // necesario para netplay
+      window.EJS_gameID = game.id;
+      window.EJS_gameName = game.name;
 
-      // ===== MULTIJUGADOR AUTOMÁTICO =====
-      // Usamos el instanceId de Discord como identificador de sala
-      const roomId = window.discordInstanceId || ("solo-" + Date.now());
+      // Controles por defecto (más cómodos)
+      window.EJS_defaultControls = {
+        0: {
+          0: { value: "x", value2: "BUTTON_2" },       // B
+          8: { value: "z", value2: "BUTTON_1" },       // A
+          2: { value: "shift", value2: "SELECT" },
+          3: { value: "enter", value2: "START" },
+          4: { value: "up arrow", value2: "DPAD_UP" },
+          5: { value: "down arrow", value2: "DPAD_DOWN" },
+          6: { value: "left arrow", value2: "DPAD_LEFT" },
+          7: { value: "right arrow", value2: "DPAD_RIGHT" }
+        }
+      };
+
+      // ===== CONTROLES VIRTUALES REACOMODADOS =====
+      // Evita que el botón A y el menú choquen con el botón de salir de Discord
+      window.EJS_VirtualGamepadSettings = [
+        // D-Pad izquierda
+        {
+          type: "dpad",
+          location: "left",
+          left: "12%",
+          top: "58%",
+          joystickInput: false,
+          inputValues: [4, 5, 6, 7]
+        },
+        // Botón B
+        {
+          type: "button",
+          text: "B",
+          id: "b",
+          location: "right",
+          left: 15,
+          top: 75,
+          bold: true,
+          input_value: 0
+        },
+        // Botón A (más abajo para no chocar)
+        {
+          type: "button",
+          text: "A",
+          id: "a",
+          location: "right",
+          left: 80,
+          top: 115,
+          bold: true,
+          input_value: 8
+        },
+        // Start
+        {
+          type: "button",
+          text: "Start",
+          id: "start",
+          location: "center",
+          left: 55,
+          top: 45,
+          fontSize: 14,
+          block: true,
+          input_value: 3
+        },
+        // Select
+        {
+          type: "button",
+          text: "Select",
+          id: "select",
+          location: "center",
+          left: -25,
+          top: 45,
+          fontSize: 14,
+          block: true,
+          input_value: 2
+        }
+      ];
+
+      // Netplay (manual: el usuario debe abrir el menú 🌐 y crear/unirse a sala)
       window.EJS_netplayServer = "https://netplay.emulatorjs.org/";
       window.EJS_netplayICEServers = [
         { urls: "stun:stun.l.google.com:19302" },
@@ -273,13 +350,14 @@
         window.EJS_playerName = window.discordUser.username;
       }
 
+      // Cuando el juego arranca
       window.EJS_onGameStart = function () {
         document.getElementById("loading").style.display = "none";
         document.getElementById("btn-back").style.display = "block";
-        console.log("✅ Juego iniciado:", game.name, "| Room:", roomId);
+        console.log("✅ Juego iniciado:", game.name);
       };
 
-      // Cargar el loader de EmulatorJS
+      // Cargar el loader
       if (!window.__ejsLoaded) {
         const script = document.createElement("script");
         script.src = "/emulatorjs/stable/data/loader.js";
@@ -292,20 +370,16 @@
         };
         document.body.appendChild(script);
       } else {
-        // Si ya estaba cargado, la forma más fiable es recargar
-        // (EmulatorJS no tiene un API limpio para cambiar de ROM)
-        location.reload();
+        // Si ya estaba cargado, recargamos la página de forma limpia
+        const url = new URL(window.location.href);
+        url.searchParams.set("t", Date.now());
+        window.location.href = url.toString();
       }
-    }
-
-    function backToMenu() {
-      // La forma más limpia y estable de volver al menú
-      location.reload();
     }
 
     // Cuando el SDK de Discord esté listo
     window.addEventListener("discord-ready", () => {
-      console.log("Discord listo → instanceId disponible para netplay");
+      console.log("Discord listo → instanceId disponible");
     });
   </script>
 
