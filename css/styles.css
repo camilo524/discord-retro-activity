@@ -182,15 +182,15 @@ html, body {
 /* Controles móviles base */
 .ejs_virtualGamepad_open {
   top: auto !important;
-  bottom: 220px !important;
-  right: 72px !important;
+  bottom: 230px !important;
+  right: 88px !important;
   left: auto !important;
   z-index: 100 !important;
 }
 
 .ejs_virtualGamepad_right {
-  bottom: 50px !important;
-  right: 72px !important;
+  bottom: 55px !important;
+  right: 88px !important;
 }
 
 .ejs_virtualGamepad_left {
