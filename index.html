@@ -149,32 +149,31 @@
     }
 
     /* ============================================
-   SOLO CONTROLES MÓVILES
-   No toca el menú de iconos de PC
-   ============================================ */
+       CONTROLES MÓVILES - más a la izquierda
+       ============================================ */
 
-    /* Menú de 3 líneas (solo el botón flotante) */
+    /* Menú de 3 líneas (arriba del todo) */
     .ejs_virtualGamepad_open {
       top: auto !important;
-      bottom: 160px !important;
-      right: 22px !important;
+      bottom: 200px !important;
+      right: 72px !important;
       left: auto !important;
       z-index: 100 !important;
     }
     
-    /* Contenedor de botones A / B */
+    /* Contenedor A / B */
     .ejs_virtualGamepad_right {
-      bottom: 40px !important;
-      right: 12px !important;
+      bottom: 50px !important;
+      right: 72px !important;
       display: flex !important;
-      flex-direction: column-reverse !important;
+      flex-direction: column !important;
       align-items: center !important;
-      gap: 12px !important;
+      gap: 14px !important;
       height: auto !important;
       width: auto !important;
     }
     
-    /* Cada botón A y B */
+    /* Botones A y B individuales */
     .ejs_virtualGamepad_right .ejs_virtualGamepad_button {
       position: relative !important;
       left: auto !important;
@@ -184,16 +183,16 @@
       margin: 0 !important;
     }
     
-    /* D-Pad (izquierda) */
+    /* D-Pad */
     .ejs_virtualGamepad_left {
-      bottom: 40px !important;
+      bottom: 50px !important;
       left: 12px !important;
     }
-
-/* Start / Select (abajo centro) */
-.ejs_virtualGamepad_bottom {
-  bottom: 10px !important;
-}
+    
+    /* Start / Select */
+    .ejs_virtualGamepad_bottom {
+      bottom: 10px !important;
+    }
   </style>
 </head>
 <body>
@@ -341,30 +340,29 @@
 
     // Ajuste extra por si el CSS no alcanza
     function fixControlPositions() {
-    // Solo el botón de 3 líneas (móvil)
+    // 3 líneas → arriba y más a la izquierda
     const openBtn = document.querySelector(".ejs_virtualGamepad_open");
     if (openBtn) {
       openBtn.style.top = "auto";
-      openBtn.style.bottom = "160px";
-      openBtn.style.right = "22px";
+      openBtn.style.bottom = "200px";
+      openBtn.style.right = "72px";
       openBtn.style.left = "auto";
       openBtn.style.zIndex = "100";
     }
   
-    // Contenedor A/B → columna vertical alineada
+    // A / B → columna vertical, más a la izquierda
     const rightPad = document.querySelector(".ejs_virtualGamepad_right");
     if (rightPad) {
-      rightPad.style.bottom = "40px";
-      rightPad.style.right = "12px";
+      rightPad.style.bottom = "50px";
+      rightPad.style.right = "72px";
       rightPad.style.display = "flex";
-      rightPad.style.flexDirection = "column-reverse";
+      rightPad.style.flexDirection = "column";
       rightPad.style.alignItems = "center";
-      rightPad.style.gap = "12px";
+      rightPad.style.gap = "14px";
       rightPad.style.height = "auto";
       rightPad.style.width = "auto";
     }
   
-    // Botones individuales dentro de A/B
     const buttons = document.querySelectorAll(
       ".ejs_virtualGamepad_right .ejs_virtualGamepad_button"
     );
@@ -380,7 +378,7 @@
     // D-Pad
     const leftPad = document.querySelector(".ejs_virtualGamepad_left");
     if (leftPad) {
-      leftPad.style.bottom = "40px";
+      leftPad.style.bottom = "50px";
       leftPad.style.left = "12px";
     }
   }
