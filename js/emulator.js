@@ -9,14 +9,23 @@
   const menu = document.getElementById("menu");
   const gameContainer = document.getElementById("game-container");
 
+  let loadTimeout = null;
+
   // ----- Tarjetas -----
   GAMES.forEach((game) => {
     const card = document.createElement("div");
     card.className = "game-card";
+
+    // Ruta de cover más segura
+    const coverSrc = game.cover || "";
+
     card.innerHTML = `
       <div class="cover">
-        <img src="${game.cover}" alt="${game.name}"
-             onerror="this.style.display='none'; this.parentElement.textContent='🎮';" />
+        ${coverSrc
+          ? `<img src="${coverSrc}" alt="${game.name}" loading="lazy"
+                 onerror="this.onerror=null; this.src=''; this.parentElement.innerHTML='🎮';" />`
+          : `<span style="font-size:2.4rem">🎮</span>`
+        }
       </div>
       <div class="name">${game.name}</div>
       <div class="meta">
@@ -35,26 +44,59 @@
     return `${mb.toFixed(1)} MB`;
   }
 
-  // ----- Volver al menú -----
+  function setStatus(title, detail = "") {
+    loadingText.textContent = title;
+    progressLabel.textContent = detail;
+  }
+
+  function showError(title, detail) {
+    if (loadTimeout) clearTimeout(loadTimeout);
+    progressWrap.style.display = "none";
+    loading.querySelector(".spinner").style.display = "none";
+    loadingText.textContent = title;
+    progressLabel.textContent = detail;
+    progressLabel.style.color = "#f87171";
+
+    // Botón para volver
+    if (!document.getElementById("btn-error-back")) {
+      const b = document.createElement("button");
+      b.id = "btn-error-back";
+      b.textContent = "← Volver al menú";
+      b.style.cssText =
+        "margin-top:16px;padding:10px 16px;border:none;border-radius:8px;background:#5865f2;color:#fff;font-weight:600;cursor:pointer";
+      b.onclick = backToMenu;
+      loading.appendChild(b);
+    }
+  }
+
   function backToMenu() {
     const url = new URL(window.location.href);
     url.searchParams.set("t", Date.now());
     window.location.href = url.toString();
   }
-  btnBack.addEventListener("click", (e) => { e.preventDefault(); backToMenu(); });
-  btnBack.addEventListener("touchend", (e) => { e.preventDefault(); backToMenu(); });
+
+  btnBack.addEventListener("click", (e) => {
+    e.preventDefault();
+    backToMenu();
+  });
+  btnBack.addEventListener("touchend", (e) => {
+    e.preventDefault();
+    backToMenu();
+  });
 
   // ----- Descarga con progreso -----
   async function downloadRomWithProgress(url, sizeMB) {
     progressWrap.style.display = "block";
     progressBar.style.width = "0%";
-    loadingText.textContent = "Descargando ROM...";
-    progressLabel.textContent = sizeMB ? `0 / ${formatSize(sizeMB)}` : "Conectando...";
+    setStatus("Descargando ROM...", sizeMB ? `0 / ${formatSize(sizeMB)}` : "Conectando...");
 
     const res = await fetch(url);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    if (!res.ok) throw new Error(`No se pudo descargar (HTTP ${res.status})`);
 
-    const total = Number(res.headers.get("Content-Length")) || (sizeMB ? sizeMB * 1024 * 1024 : 0);
+    const total =
+      Number(res.headers.get("Content-Length")) ||
+      (sizeMB ? sizeMB * 1024 * 1024 : 0);
+
     const reader = res.body.getReader();
     const chunks = [];
     let received = 0;
@@ -70,47 +112,68 @@
         progressBar.style.width = pct + "%";
         const recMB = (received / (1024 * 1024)).toFixed(1);
         const totMB = (total / (1024 * 1024)).toFixed(1);
-        progressLabel.textContent = `${recMB} MB / ${totMB} MB (${Math.round(pct)}%)`;
+        progressLabel.textContent = `${recMB} / ${totMB} MB (${Math.round(pct)}%)`;
       } else {
-        const recMB = (received / (1024 * 1024)).toFixed(1);
-        progressLabel.textContent = `${recMB} MB descargados...`;
-        progressBar.style.width = "50%";
+        progressBar.style.width = Math.min(90, received / 1e6) + "%";
+        progressLabel.textContent = `${(received / 1e6).toFixed(1)} MB...`;
       }
     }
 
     progressBar.style.width = "100%";
-    progressLabel.textContent = "ROM descargada";
-    loadingText.textContent = "Preparando juego...";
+    setStatus("ROM descargada", "Creando archivo en memoria...");
 
     const blob = new Blob(chunks);
-    return URL.createObjectURL(blob);
+    const blobUrl = URL.createObjectURL(blob);
+    return blobUrl;
   }
 
   // ----- Iniciar juego -----
   async function startGame(game) {
     menu.style.display = "none";
     loading.style.display = "flex";
+    loading.querySelector(".spinner").style.display = "block";
     btnBack.style.display = "none";
     gameContainer.style.display = "block";
     progressWrap.style.display = "none";
     progressBar.style.width = "0%";
-    progressLabel.textContent = "";
-    loadingText.textContent = "Preparando...";
+    progressLabel.style.color = "#94a3b8";
+    setStatus("Preparando...", game.name);
+
+    const errBtn = document.getElementById("btn-error-back");
+    if (errBtn) errBtn.remove();
 
     try {
-      // Descargar ROM con barra (sobre todo útil en archivos grandes)
       let romUrl = game.rom;
-      const isRemote = game.rom.startsWith("http") || game.rom.startsWith("/files");
+      const isRemote =
+        game.rom.startsWith("http") ||
+        game.rom.startsWith("/files") ||
+        game.rom.startsWith("/roms");
       const isLarge = (game.sizeMB || 0) >= 5;
 
       if (isRemote || isLarge) {
+        setStatus("Descargando ROM...", game.name);
         romUrl = await downloadRomWithProgress(game.rom, game.sizeMB);
       }
 
-      loadingText.textContent = "Cargando emulador...";
-      progressLabel.textContent = game.name;
+      // ---- Pasos después de la descarga ----
+      setStatus("ROM lista", "Configurando emulador...");
+      await sleep(200);
 
-      // Config EmulatorJS
+      setStatus("Cargando núcleo " + game.core.toUpperCase() + "...", "Esto puede tardar en móviles");
+      progressWrap.style.display = "block";
+      progressBar.style.width = "15%";
+
+      // Timeout de seguridad (móvil + PSX puede tardar mucho)
+      const timeoutMs = game.core === "psx" ? 120000 : 60000;
+      loadTimeout = setTimeout(() => {
+        showError(
+          "El emulador se quedó cargando",
+          game.core === "psx"
+            ? "PSX en móvil suele fallar con ROMs grandes (memoria). Prueba en PC o usa una ROM más ligera (.chd)."
+            : "Revisa la consola o prueba de nuevo."
+        );
+      }, timeoutMs);
+
       window.EJS_player = "#game";
       window.EJS_core = game.core;
       window.EJS_gameUrl = romUrl;
@@ -120,7 +183,9 @@
       window.EJS_gameID = game.id;
       window.EJS_gameName = game.name;
 
-      // Controles por juego
+      // BIOS PSX (si la tienes)
+      // window.EJS_biosUrl = "/files/scph5501.bin";
+
       const layout = CONTROL_LAYOUTS[game.controls] || CONTROL_LAYOUTS.default;
       if (layout) {
         window.EJS_VirtualGamepadSettings = layout;
@@ -128,7 +193,6 @@
         delete window.EJS_VirtualGamepadSettings;
       }
 
-      // Netplay manual
       window.EJS_netplayServer = "https://netplay.emulatorjs.org/";
       window.EJS_netplayICEServers = [
         { urls: "stun:stun.l.google.com:19302" },
@@ -139,7 +203,9 @@
         window.EJS_playerName = window.discordUser.username;
       }
 
+      // Callbacks de estado
       window.EJS_onGameStart = function () {
+        if (loadTimeout) clearTimeout(loadTimeout);
         loading.style.display = "none";
         btnBack.style.display = "block";
         console.log("✅ Juego iniciado:", game.name);
@@ -147,45 +213,68 @@
         setTimeout(fixControlPositions, 1200);
       };
 
+      // Si EmulatorJS expone errores por consola, al menos lo vemos
+      window.addEventListener("error", onGlobalError);
+      window.addEventListener("unhandledrejection", onUnhandled);
+
+      setStatus("Iniciando emulador...", "Cargando scripts y WASM");
+      progressBar.style.width = "35%";
+
       if (!window.__ejsLoaded) {
         const script = document.createElement("script");
         script.src = "/emulatorjs/stable/data/loader.js";
-        script.onload = () => { window.__ejsLoaded = true; };
+        script.onload = () => {
+          window.__ejsLoaded = true;
+          setStatus("Núcleo cargado", "Arrancando juego... (puede tardar)");
+          progressBar.style.width = "60%";
+        };
         script.onerror = () => {
-          loadingText.textContent = "Error cargando el emulador";
-          progressLabel.textContent = "Revisa el URL Mapping /emulatorjs";
+          showError(
+            "No se pudo cargar EmulatorJS",
+            "Revisa el URL Mapping de /emulatorjs"
+          );
         };
         document.body.appendChild(script);
       } else {
+        setStatus("Reiniciando emulador...", "");
         const url = new URL(window.location.href);
         url.searchParams.set("t", Date.now());
         window.location.href = url.toString();
       }
     } catch (err) {
       console.error(err);
-      loadingText.textContent = "Error al descargar la ROM";
-      progressLabel.textContent = String(err.message || err);
-      progressWrap.style.display = "none";
+      showError("Error al preparar el juego", String(err.message || err));
     }
+  }
+
+  function onGlobalError(e) {
+    console.error("Error global:", e);
+  }
+  function onUnhandled(e) {
+    console.error("Promise rechazada:", e.reason);
+  }
+
+  function sleep(ms) {
+    return new Promise((r) => setTimeout(r, ms));
   }
 
   function fixControlPositions() {
     const openBtn = document.querySelector(".ejs_virtualGamepad_open");
     if (openBtn) {
       openBtn.style.top = "auto";
-      openBtn.style.bottom = "220px";
-      openBtn.style.right = "72px";
+      openBtn.style.bottom = "230px";
+      openBtn.style.right = "88px";
       openBtn.style.left = "auto";
       openBtn.style.zIndex = "100";
     }
     const rightPad = document.querySelector(".ejs_virtualGamepad_right");
     if (rightPad) {
-      rightPad.style.bottom = "50px";
-      rightPad.style.right = "72px";
+      rightPad.style.bottom = "55px";
+      rightPad.style.right = "88px";
     }
     const leftPad = document.querySelector(".ejs_virtualGamepad_left");
     if (leftPad) {
-      leftPad.style.bottom = "50px";
+      leftPad.style.bottom = "55px";
       leftPad.style.left = "12px";
     }
   }
