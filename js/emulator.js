@@ -70,19 +70,46 @@
   }
 
   function backToMenu() {
-    const url = new URL(window.location.href);
-    url.searchParams.set("t", Date.now());
-    window.location.href = url.toString();
+    // NO usar location.href ni reload → Discord móvil cierra la Activity
+  
+    if (loadTimeout) {
+      clearTimeout(loadTimeout);
+      loadTimeout = null;
+    }
+  
+    // Parar / limpiar el emulador
+    const gameDiv = document.getElementById("game");
+    gameDiv.innerHTML = "";
+  
+    // Liberar blob de ROMs grandes si existe
+    if (window.__currentBlobUrl) {
+      try {
+        URL.revokeObjectURL(window.__currentBlobUrl);
+      } catch (e) {}
+      window.__currentBlobUrl = null;
+    }
+  
+    // Restaurar UI
+    gameContainer.style.display = "none";
+    loading.style.display = "none";
+    btnBack.style.display = "none";
+    progressWrap.style.display = "none";
+    progressBar.style.width = "0%";
+    progressLabel.textContent = "";
+    progressLabel.style.color = "#94a3b8";
+    loading.querySelector(".spinner").style.display = "block";
+  
+    const errBtn = document.getElementById("btn-error-back");
+    if (errBtn) errBtn.remove();
+  
+    menu.style.display = "flex";
+  
+    // Permitir cargar EmulatorJS de nuevo en el próximo juego
+    window.__ejsLoaded = false;
+  
+    // Quitar scripts viejos del loader (evita conflictos)
+    document.querySelectorAll("script[data-ejs]").forEach((s) => s.remove());
   }
-
-  btnBack.addEventListener("click", (e) => {
-    e.preventDefault();
-    backToMenu();
-  });
-  btnBack.addEventListener("touchend", (e) => {
-    e.preventDefault();
-    backToMenu();
-  });
 
   // ----- Descarga con progreso -----
   async function downloadRomWithProgress(url, sizeMB) {
