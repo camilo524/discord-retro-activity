@@ -21,10 +21,9 @@ const GAMES = [
     name: "Metal Slug 2",
     core: "arcade",
     rom: `/files/mslug2.zip?v=${VERSION}`,
-    bios: "./roms/neogeo.zip",
-    cover: "./covers/mslug3.webp",   // imagen optimizada
-    sizeMB: 16.6,                    // peso aproximado en MB
-    // layout: "default" | "diamond" | "nes"
+    bios: `./roms/neogeo.zip?v=${VERSION}`,
+    cover: "./covers/mslug3.webp",
+    sizeMB: 16.6,
     controls: "default"
   },
   {
@@ -33,12 +32,11 @@ const GAMES = [
     core: "arcade",
     rom: `/files/mslug3.zip?v=${VERSION}`,
     bios: `./roms/neogeo.zip?v=${VERSION}`,
-    cover: "./covers/mslug3.webp",   // imagen optimizada
-    sizeMB: 81,                    // peso aproximado en MB
-    // layout: "default" | "diamond" | "nes"
+    cover: "./covers/mslug3.webp",
+    sizeMB: 81,
     controls: "default"
   },
-  {
+    {
     id: 4,
     name: "Super Mario Bros",
     core: "nes",
