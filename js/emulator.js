@@ -58,6 +58,46 @@
     return new Promise((r) => setTimeout(r, ms));
   }
 
+  function isInDiscord() {
+    const h = location.hostname;
+    return (
+      h.includes("discordsays.com") ||
+      h.includes("discordapigateway.com") ||
+      h.endsWith("discord.com")
+    );
+  }
+
+  /**
+   * "mslug2.zip" | "/files/mslug2.zip" | URL completa
+   * → Discord: /files/nombre
+   * → Web:     https://files.camiloh.co/nombre
+   */
+  function resolveFileUrl(pathOrUrl) {
+    if (!pathOrUrl) return "";
+
+    if (/^https?:\/\//i.test(pathOrUrl)) {
+      if (isInDiscord() && pathOrUrl.includes("files.camiloh.co")) {
+        const name = pathOrUrl.split("/").pop().split("?")[0];
+        return `/files/${name}?v=${VERSION}`;
+      }
+      return pathOrUrl;
+    }
+
+    const name = pathOrUrl
+      .replace(/^\/files\//, "")
+      .replace(/^\//, "")
+      .split("?")[0];
+
+    if (isInDiscord()) {
+      return `/files/${name}?v=${VERSION}`;
+    }
+    return `https://files.camiloh.co/${name}?v=${VERSION}`;
+  }
+
+  function fileNameFromPath(pathOrUrl) {
+    return String(pathOrUrl).split("?")[0].split("/").pop() || "game.bin";
+  }
+
   function showError(title, detail) {
     if (loadTimeout) {
       clearTimeout(loadTimeout);
@@ -82,7 +122,7 @@
   }
 
   // =============================================
-  //  VOLVER AL MENÚ (SIN RELOAD — importante en móvil)
+  //  VOLVER AL MENÚ (SIN RELOAD)
   // =============================================
   function backToMenu() {
     if (loadTimeout) {
@@ -90,11 +130,9 @@
       loadTimeout = null;
     }
 
-    // Limpiar canvas / DOM del emulador
     const gameDiv = document.getElementById("game");
     if (gameDiv) gameDiv.innerHTML = "";
 
-    // Liberar blob de ROMs grandes
     if (window.__currentBlobUrl) {
       try {
         URL.revokeObjectURL(window.__currentBlobUrl);
@@ -102,7 +140,6 @@
       window.__currentBlobUrl = null;
     }
 
-    // Restaurar UI
     gameContainer.style.display = "none";
     loading.style.display = "none";
     btnBack.style.display = "none";
@@ -119,7 +156,6 @@
 
     menu.style.display = "flex";
 
-    // Permitir recargar EmulatorJS en el próximo juego
     window.__ejsLoaded = false;
     document.querySelectorAll("script[data-ejs]").forEach((s) => s.remove());
   }
@@ -136,9 +172,9 @@
   });
 
   // =============================================
-  //  DESCARGA CON PROGRESO
+  //  DESCARGA CON PROGRESO (+ nombre de archivo)
   // =============================================
-  async function downloadRomWithProgress(url, sizeMB) {
+  async function downloadRomWithProgress(url, sizeMB, fileName) {
     progressWrap.style.display = "block";
     progressBar.style.width = "0%";
     setStatus(
@@ -149,6 +185,13 @@
     const res = await fetch(url);
     if (!res.ok) {
       throw new Error(`No se pudo descargar (HTTP ${res.status})`);
+    }
+
+    const ct = (res.headers.get("Content-Type") || "").toLowerCase();
+    if (ct.includes("text/html")) {
+      throw new Error(
+        "La URL devolvió HTML en lugar del ROM. Revisa /files vs files.camiloh.co"
+      );
     }
 
     const total =
@@ -183,7 +226,11 @@
     await sleep(80);
 
     const blob = new Blob(chunks);
-    return URL.createObjectURL(blob);
+    const name = fileName || "game.bin";
+    const file = new File([blob], name, {
+      type: "application/octet-stream"
+    });
+    return URL.createObjectURL(file);
   }
 
   // =============================================
@@ -204,7 +251,6 @@
     const errBtn = document.getElementById("btn-error-back");
     if (errBtn) errBtn.remove();
 
-    // Limpiar partida anterior
     const gameDiv = document.getElementById("game");
     if (gameDiv) gameDiv.innerHTML = "";
     if (window.__currentBlobUrl) {
@@ -217,20 +263,31 @@
     window.__ejsLoaded = false;
 
     try {
-      let romUrl = game.rom;
+      const resolvedRom = resolveFileUrl(game.rom);
+      const resolvedBios = game.bios ? resolveFileUrl(game.bios) : "";
+
+      let romUrl = resolvedRom;
 
       const needsDownload =
-        game.rom.startsWith("http") ||
-        game.rom.startsWith("/files") ||
+        resolvedRom.startsWith("http") ||
+        resolvedRom.startsWith("/files") ||
         (game.sizeMB || 0) >= 2;
 
       if (needsDownload) {
         setStatus("Descargando ROM...", game.name);
         await sleep(50);
-        romUrl = await downloadRomWithProgress(game.rom, game.sizeMB);
+        const fname = fileNameFromPath(game.rom);
+        romUrl = await downloadRomWithProgress(
+          resolvedRom,
+          game.sizeMB,
+          fname
+        );
         window.__currentBlobUrl = romUrl;
       } else {
-        setStatus("Cargando ROM local...", formatSize(game.sizeMB) || game.name);
+        setStatus(
+          "Cargando ROM local...",
+          formatSize(game.sizeMB) || game.name
+        );
         progressBar.style.width = "40%";
         await sleep(150);
       }
@@ -257,34 +314,22 @@
         );
       }, timeoutMs);
 
-
-      //Configuracion emuladorJS//
-      
       const EJS_BASE =
         location.hostname.endsWith("discordsays.com") ||
         location.hostname.endsWith("discordapigateway.com")
           ? "/emulatorjs/stable/data/"
           : "https://cdn.emulatorjs.org/stable/data/";
-      
+
       window.EJS_player = "#game";
       window.EJS_core = game.core;
-      
-      // Arcade: URL directa para conservar el nombre del zip
-      const isArcade = game.core === "arcade" || game.core === "fbneo";
-      if (isArcade) {
-        window.EJS_gameUrl = game.rom;
-      } else {
-        window.EJS_gameUrl = romUrl; // blob o url según tu lógica actual
-      }
-      
-      window.EJS_biosUrl = game.bios || "";
+      window.EJS_gameUrl = romUrl;
+      window.EJS_biosUrl = resolvedBios;
       window.EJS_pathtodata = EJS_BASE;
       window.EJS_startOnLoaded = true;
       window.EJS_color = "#000000";
       window.EJS_gameID = game.id;
       window.EJS_gameName = game.name;
 
-      // Controles por juego
       const layout =
         typeof CONTROL_LAYOUTS !== "undefined"
           ? CONTROL_LAYOUTS[game.controls] || CONTROL_LAYOUTS.default
@@ -296,7 +341,6 @@
         delete window.EJS_VirtualGamepadSettings;
       }
 
-      // Netplay manual
       window.EJS_netplayServer = "https://netplay.emulatorjs.org/";
       window.EJS_netplayICEServers = [
         { urls: "stun:stun.l.google.com:19302" },
@@ -307,7 +351,6 @@
         window.EJS_playerName = window.discordUser.username;
       }
 
-      // Cuando el juego arranca de verdad
       window.EJS_onGameStart = function () {
         if (loadTimeout) {
           clearTimeout(loadTimeout);
@@ -335,7 +378,7 @@
       script.onerror = function () {
         showError(
           "No se pudo cargar EmulatorJS",
-          "Revisa el URL Mapping de /emulatorjs"
+          "Revisa el URL Mapping de /emulatorjs o la conexión al CDN"
         );
       };
       document.body.appendChild(script);
