@@ -31,6 +31,7 @@ const GAMES = [
     name: "Metal Slug 3",
     core: "arcade",
     rom: "/files/mslug3.zip",
+    bios: "./roms/neogeo.zip",
     cover: "./covers/mslug3.webp",   // imagen optimizada
     sizeMB: 80,                    // peso aproximado en MB
     // layout: "default" | "diamond" | "nes"
