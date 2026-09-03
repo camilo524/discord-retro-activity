@@ -221,6 +221,9 @@
 
       const needsDownload =
         game.rom.startsWith("http") ||
+        game.rom.startsWith("http") ||
+        game.rom.startsWith("https") ||
+        game.rom.startsWith("/files") ||
         game.rom.startsWith("/files") ||
         (game.sizeMB || 0) >= 2;
 
