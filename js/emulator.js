@@ -67,11 +67,6 @@
     );
   }
 
-  /**
-   * "mslug2.zip" | "/files/mslug2.zip" | URL completa
-   * → Discord: /files/nombre
-   * → Web:     https://files.camiloh.co/nombre
-   */
   function resolveFileUrl(pathOrUrl) {
     if (!pathOrUrl) return "";
 
@@ -122,7 +117,7 @@
   }
 
   // =============================================
-  //  VOLVER AL MENÚ (SIN RELOAD)
+  //  VOLVER AL MENÚ
   // =============================================
   function backToMenu() {
     if (loadTimeout) {
@@ -172,7 +167,7 @@
   });
 
   // =============================================
-  //  DESCARGA CON PROGRESO (+ nombre de archivo)
+  //  DESCARGA CON PROGRESO
   // =============================================
   async function downloadRomWithProgress(url, sizeMB, fileName) {
     progressWrap.style.display = "block";
@@ -182,7 +177,12 @@
       sizeMB ? `0 / ${formatSize(sizeMB)}` : "Conectando..."
     );
 
-    const res = await fetch(url);
+    const res = await fetch(url, {
+      method: "GET",
+      mode: "cors",
+      credentials: "omit",
+      cache: "no-store"
+    });
     if (!res.ok) {
       throw new Error(`No se pudo descargar (HTTP ${res.status})`);
     }
@@ -265,28 +265,20 @@
     try {
       const resolvedRom = resolveFileUrl(game.rom);
       const resolvedBios = game.bios ? resolveFileUrl(game.bios) : "";
-
       let romUrl = resolvedRom;
 
-      ////////////////////////
-
-      const resolvedRom = resolveFileUrl(game.rom);
-      const resolvedBios = game.bios ? resolveFileUrl(game.bios) : "";
-      
-      let romUrl = resolvedRom;
-      
-      // PSX / archivos muy grandes: NO bajar a RAM (evita 206 / OOM / Failed to fetch)
+      // PSX / muy grandes: URL directa (no blob en RAM)
       const isHuge =
         game.core === "psx" ||
         game.core === "psp" ||
         (game.sizeMB || 0) >= 80;
-      
+
       const needsDownload =
         !isHuge &&
         (resolvedRom.startsWith("http") ||
           resolvedRom.startsWith("/files") ||
           (game.sizeMB || 0) >= 2);
-      
+
       if (needsDownload) {
         setStatus("Descargando ROM...", game.name);
         await sleep(50);
@@ -298,7 +290,6 @@
         );
         window.__currentBlobUrl = romUrl;
       } else {
-        // URL directa (EmulatorJS descarga él solo)
         setStatus(
           isHuge ? "ROM grande: carga directa..." : "Cargando ROM...",
           formatSize(game.sizeMB) || game.name
@@ -306,18 +297,6 @@
         progressBar.style.width = "45%";
         await sleep(150);
         romUrl = resolvedRom;
-      }
-      
-      window.EJS_gameUrl = romUrl;
-      window.EJS_biosUrl = resolvedBios;
-        window.__currentBlobUrl = romUrl;
-      } else {
-        setStatus(
-          "Cargando ROM local...",
-          formatSize(game.sizeMB) || game.name
-        );
-        progressBar.style.width = "40%";
-        await sleep(150);
       }
 
       setStatus("ROM lista", "Configurando emulador...");
@@ -331,13 +310,13 @@
       progressBar.style.width = "55%";
       await sleep(100);
 
-      const timeoutMs = game.core === "psx" ? 120000 : 60000;
+      const timeoutMs = game.core === "psx" ? 180000 : 60000;
       if (loadTimeout) clearTimeout(loadTimeout);
       loadTimeout = setTimeout(() => {
         showError(
           "El emulador se quedó cargando",
           game.core === "psx"
-            ? "PSX en móvil suele fallar con ROMs grandes por memoria. Prueba en PC o usa una ROM .chd más ligera."
+            ? "PSX en móvil suele fallar con ROMs grandes. Prueba en PC o un .chd más ligero."
             : "Tiempo de espera agotado. Vuelve al menú e inténtalo de nuevo."
         );
       }, timeoutMs);
@@ -417,7 +396,7 @@
   }
 
   // =============================================
-  //  POSICIÓN CONTROLES MÓVILES
+  //  CONTROLES MÓVILES
   // =============================================
   function fixControlPositions() {
     const openBtn = document.querySelector(".ejs_virtualGamepad_open");
