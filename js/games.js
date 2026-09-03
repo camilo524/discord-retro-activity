@@ -20,8 +20,8 @@ const GAMES = [
     id: 2,
     name: "Metal Slug 2",
     core: "arcade",
-    rom: "/files/mslug2.zip",
-    bios: "/files/neogeo.zip",
+    rom: "mslug2.zip",
+    bios: "neogeo.zip",
     cover: "./covers/mslug2.webp",
     sizeMB: 17.8,
     controls: "default"
@@ -30,8 +30,8 @@ const GAMES = [
     id: 3,
     name: "Metal Slug 3",
     core: "arcade",
-    rom: "https://files.camiloh.co/mslug3.zip",
-    bios: `./roms/neogeo.zip?v=${VERSION}`,
+    rom: "mslug3.zip",
+    bios: "neogeo.zip",
     cover: "./covers/mslug3.webp",
     sizeMB: 81,
     controls: "default"
@@ -49,7 +49,7 @@ const GAMES = [
     id: 5,
     name: "Bloody Roar",
     core: "psx",
-    rom: "/files/bloody-roar.zip",
+    rom: "bloody-roar.zip",
     cover: "./covers/blody.webp",
     sizeMB: 277,
     controls: "diamond"              // rombo: Y X / B A
