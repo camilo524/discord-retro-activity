@@ -268,11 +268,25 @@
 
       let romUrl = resolvedRom;
 
-      const needsDownload =
-        resolvedRom.startsWith("http") ||
-        resolvedRom.startsWith("/files") ||
-        (game.sizeMB || 0) >= 2;
+      ////////////////////////
 
+      const resolvedRom = resolveFileUrl(game.rom);
+      const resolvedBios = game.bios ? resolveFileUrl(game.bios) : "";
+      
+      let romUrl = resolvedRom;
+      
+      // PSX / archivos muy grandes: NO bajar a RAM (evita 206 / OOM / Failed to fetch)
+      const isHuge =
+        game.core === "psx" ||
+        game.core === "psp" ||
+        (game.sizeMB || 0) >= 80;
+      
+      const needsDownload =
+        !isHuge &&
+        (resolvedRom.startsWith("http") ||
+          resolvedRom.startsWith("/files") ||
+          (game.sizeMB || 0) >= 2);
+      
       if (needsDownload) {
         setStatus("Descargando ROM...", game.name);
         await sleep(50);
@@ -282,6 +296,20 @@
           game.sizeMB,
           fname
         );
+        window.__currentBlobUrl = romUrl;
+      } else {
+        // URL directa (EmulatorJS descarga él solo)
+        setStatus(
+          isHuge ? "ROM grande: carga directa..." : "Cargando ROM...",
+          formatSize(game.sizeMB) || game.name
+        );
+        progressBar.style.width = "45%";
+        await sleep(150);
+        romUrl = resolvedRom;
+      }
+      
+      window.EJS_gameUrl = romUrl;
+      window.EJS_biosUrl = resolvedBios;
         window.__currentBlobUrl = romUrl;
       } else {
         setStatus(
