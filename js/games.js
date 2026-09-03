@@ -1,4 +1,4 @@
-const VERSION = "0002"; // cámbialo cada vez que subas algo
+const VERSION = "0003"; // cámbialo cada vez que subas algo
 
 // =============================================
 //  CONFIGURACIÓN DE JUEGOS
