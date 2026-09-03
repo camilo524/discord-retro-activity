@@ -90,6 +90,30 @@
       loadTimeout = null;
     }
 
+    // Apagar el emulador correctamente ANTES de limpiar el DOM.
+    // Borrar el div no detiene el AudioContext interno de EmulatorJS —
+    // por eso la música seguía sonando al volver al menú.
+    try {
+      if (window.EJS_emulator && window.EJS_emulator.gameManager) {
+        if (typeof window.EJS_emulator.gameManager.exit === "function") {
+          window.EJS_emulator.gameManager.exit();
+        } else if (typeof window.EJS_emulator.gameManager.toggleMainLoop === "function") {
+          window.EJS_emulator.gameManager.toggleMainLoop(0); // pausa el loop principal
+        }
+      }
+    } catch (e) {
+      console.warn("No se pudo cerrar el emulador limpiamente:", e);
+    }
+    // Red de seguridad: silenciar/soltar cualquier <audio> que haya quedado vivo
+    document.querySelectorAll("audio").forEach((a) => {
+      try {
+        a.pause();
+        a.muted = true;
+        a.src = "";
+      } catch (e) {}
+    });
+    window.EJS_emulator = undefined;
+
     // Limpiar canvas / DOM del emulador
     const gameDiv = document.getElementById("game");
     if (gameDiv) gameDiv.innerHTML = "";
@@ -146,10 +170,32 @@
       sizeMB ? `0 / ${formatSize(sizeMB)}` : "Conectando..."
     );
 
-    // Se fuerza la petición sin rangos y se limpian headers automáticos si es necesario
-    const res = await fetch(url);
+    // Timeout de "atasco": si pasan STALL_MS sin recibir NADA nuevo
+    // (ni siquiera los headers), se aborta en vez de quedarse pegado para siempre.
+    const STALL_MS = 20000;
+    const controller = new AbortController();
+    let stallTimer = null;
+    const armStallTimer = () => {
+      clearTimeout(stallTimer);
+      stallTimer = setTimeout(() => controller.abort(), STALL_MS);
+    };
+
+    armStallTimer();
+    let res;
+    try {
+      res = await fetch(url, { signal: controller.signal });
+    } catch (e) {
+      clearTimeout(stallTimer);
+      if (e.name === "AbortError") {
+        throw new Error(
+          "La descarga no respondió a tiempo (conexión atascada). Revisa tu conexión e inténtalo de nuevo."
+        );
+      }
+      throw e;
+    }
 
     if (!res.ok && res.status !== 206) {
+      clearTimeout(stallTimer);
       throw new Error(`No se pudo descargar (HTTP ${res.status})`);
     }
 
@@ -161,23 +207,37 @@
     const chunks = [];
     let received = 0;
 
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      chunks.push(value);
-      received += value.length;
+    try {
+      while (true) {
+        armStallTimer(); // se reinicia con cada chunk recibido
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+        received += value.length;
 
-      if (total > 0) {
-        const pct = Math.min(100, (received / total) * 100);
-        progressBar.style.width = pct + "%";
-        const recMB = (received / (1024 * 1024)).toFixed(1);
-        const totMB = (total / (1024 * 1024)).toFixed(1);
-        progressLabel.textContent = `${recMB} / ${totMB} MB (${Math.round(pct)}%)`;
-      } else {
-        const recMB = (received / (1024 * 1024)).toFixed(1);
-        progressLabel.textContent = `${recMB} MB descargados...`;
-        progressBar.style.width = Math.min(90, received / 1e6) + "%";
+        if (total > 0) {
+          const pct = Math.min(100, (received / total) * 100);
+          progressBar.style.width = pct + "%";
+          const recMB = (received / (1024 * 1024)).toFixed(1);
+          const totMB = (total / (1024 * 1024)).toFixed(1);
+          progressLabel.textContent = `${recMB} / ${totMB} MB (${Math.round(pct)}%)`;
+        } else {
+          const recMB = (received / (1024 * 1024)).toFixed(1);
+          progressLabel.textContent = `${recMB} MB descargados...`;
+          progressBar.style.width = Math.min(90, received / 1e6) + "%";
+        }
       }
+    } catch (e) {
+      if (e.name === "AbortError") {
+        throw new Error(
+          `Descarga atascada tras ${(received / (1024 * 1024)).toFixed(
+            1
+          )} MB. Revisa tu conexión e inténtalo de nuevo.`
+        );
+      }
+      throw e;
+    } finally {
+      clearTimeout(stallTimer);
     }
 
     progressBar.style.width = "100%";
