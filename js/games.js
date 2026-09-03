@@ -1,4 +1,4 @@
-const VERSION = "0006"; // cámbialo cada vez que subas algo
+const VERSION = "0007"; // cámbialo cada vez que subas algo
 
 // =============================================
 //  CONFIGURACIÓN DE JUEGOS
@@ -23,7 +23,7 @@ const GAMES = [
     rom: "/files/mslug2.zip",
     bios: `./roms/neogeo.zip?v=${VERSION}`,
     cover: "./covers/mslug3.webp",
-    sizeMB: 17.6,
+    sizeMB: 17.7,
     controls: "default"
   },
   {
