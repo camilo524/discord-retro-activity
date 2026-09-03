@@ -20,7 +20,7 @@ const GAMES = [
     core: "arcade",
     rom: "/files/mslug3.zip",
     cover: "./covers/mslug3.webp",   // imagen optimizada
-    sizeMB: 0.13,                    // peso aproximado en MB
+    sizeMB: 80,                    // peso aproximado en MB
     // layout: "default" | "diamond" | "nes"
     controls: "default"
   },
