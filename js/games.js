@@ -1,3 +1,5 @@
+const VERSION = "20260903"; // cámbialo cada vez que subas algo
+
 // =============================================
 //  CONFIGURACIÓN DE JUEGOS
 //  Edita solo este archivo para añadir juegos
@@ -8,7 +10,7 @@ const GAMES = [
     id: 1,
     name: "Contra",
     core: "nes",
-    rom: "./roms/contra.nes",
+    rom: `./roms/contra.nes?v=${VERSION}`,
     cover: "./covers/contra.webp",   // imagen optimizada
     sizeMB: 0.13,                    // peso aproximado en MB
     // layout: "default" | "diamond" | "nes"
