@@ -19,10 +19,10 @@ const GAMES = [
   {
     id: 2,
     name: "Metal Slug 2",
-    core: "psx",
+    core: "arcade",
     rom: "/files/mslug2.zip",
     cover: "./covers/mslug3.webp",   // imagen optimizada
-    sizeMB: 17,                    // peso aproximado en MB
+    sizeMB: 16,6,                    // peso aproximado en MB
     // layout: "default" | "diamond" | "nes"
     controls: "default"
   },
@@ -33,7 +33,7 @@ const GAMES = [
     rom: "/files/mslug3.zip",
     bios: "./roms/neogeo.zip",
     cover: "./covers/mslug3.webp",   // imagen optimizada
-    sizeMB: 80,                    // peso aproximado en MB
+    sizeMB: 81,                    // peso aproximado en MB
     // layout: "default" | "diamond" | "nes"
     controls: "default"
   },
