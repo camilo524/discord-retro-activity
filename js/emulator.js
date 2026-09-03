@@ -261,6 +261,11 @@
       window.EJS_player = "#game";
       window.EJS_core = game.core;
       window.EJS_gameUrl = romUrl;
+      if (game.bios) {
+        window.EJS_biosUrl = game.bios;
+      } else {
+        window.EJS_biosUrl = "";
+      }
       window.EJS_pathtodata = "/emulatorjs/stable/data/";
       window.EJS_startOnLoaded = true;
       window.EJS_color = "#000000";
