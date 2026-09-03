@@ -1,4 +1,4 @@
-const VERSION = "0001"; // cámbialo cada vez que subas algo
+const VERSION = "0002"; // cámbialo cada vez que subas algo
 
 // =============================================
 //  CONFIGURACIÓN DE JUEGOS
@@ -21,8 +21,9 @@ const GAMES = [
     name: "Metal Slug 2",
     core: "arcade",
     rom: `/files/mslug2.zip?v=${VERSION}`,
+    bios: "./roms/neogeo.zip",
     cover: "./covers/mslug3.webp",   // imagen optimizada
-    sizeMB: 16,6,                    // peso aproximado en MB
+    sizeMB: 16.6,                    // peso aproximado en MB
     // layout: "default" | "diamond" | "nes"
     controls: "default"
   },
@@ -30,8 +31,8 @@ const GAMES = [
     id: 3,
     name: "Metal Slug 3",
     core: "arcade",
-    rom: "/files/mslug3.zip",
-    bios: "./roms/neogeo.zip",
+    rom: `/files/mslug3.zip?v=${VERSION}`,
+    bios: `./roms/neogeo.zip?v=${VERSION}`,
     cover: "./covers/mslug3.webp",   // imagen optimizada
     sizeMB: 81,                    // peso aproximado en MB
     // layout: "default" | "diamond" | "nes"
