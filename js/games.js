@@ -1,4 +1,4 @@
-const VERSION = "0003"; // cámbialo cada vez que subas algo
+const VERSION = "0004"; // cámbialo cada vez que subas algo
 
 // =============================================
 //  CONFIGURACIÓN DE JUEGOS
@@ -20,7 +20,7 @@ const GAMES = [
     id: 2,
     name: "Metal Slug 2",
     core: "arcade",
-    rom: `/files/mslug2.zip?v=${VERSION}`,
+    rom: "/files/mslug2.zip",
     bios: `./roms/neogeo.zip?v=${VERSION}`,
     cover: "./covers/mslug3.webp",
     sizeMB: 16.6,
