@@ -147,11 +147,7 @@
     );
 
     // Se fuerza la petición sin rangos y se limpian headers automáticos si es necesario
-    const res = await fetch(url, {
-      headers: {
-        "Range": "bytes=0-"
-      }
-    });
+    const res = await fetch(url);
 
     if (!res.ok && res.status !== 206) {
       throw new Error(`No se pudo descargar (HTTP ${res.status})`);
