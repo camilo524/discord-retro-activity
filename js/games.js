@@ -1,4 +1,4 @@
-const VERSION = "20260903"; // cámbialo cada vez que subas algo
+const VERSION = "0001"; // cámbialo cada vez que subas algo
 
 // =============================================
 //  CONFIGURACIÓN DE JUEGOS
@@ -20,7 +20,7 @@ const GAMES = [
     id: 2,
     name: "Metal Slug 2",
     core: "arcade",
-    rom: "/files/mslug2.zip",
+    rom: `/files/mslug2.zip?v=${VERSION}`,
     cover: "./covers/mslug3.webp",   // imagen optimizada
     sizeMB: 16,6,                    // peso aproximado en MB
     // layout: "default" | "diamond" | "nes"
