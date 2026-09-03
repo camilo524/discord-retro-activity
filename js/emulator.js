@@ -58,41 +58,6 @@
     return new Promise((r) => setTimeout(r, ms));
   }
 
-  function isInDiscord() {
-    const h = location.hostname;
-    return (
-      h.includes("discordsays.com") ||
-      h.includes("discordapigateway.com") ||
-      h.endsWith("discord.com")
-    );
-  }
-
-  function resolveFileUrl(pathOrUrl) {
-    if (!pathOrUrl) return "";
-
-    if (/^https?:\/\//i.test(pathOrUrl)) {
-      if (isInDiscord() && pathOrUrl.includes("files.camiloh.co")) {
-        const name = pathOrUrl.split("/").pop().split("?")[0];
-        return `/files/${name}?v=${VERSION}`;
-      }
-      return pathOrUrl;
-    }
-
-    const name = pathOrUrl
-      .replace(/^\/files\//, "")
-      .replace(/^\//, "")
-      .split("?")[0];
-
-    if (isInDiscord()) {
-      return `/files/${name}?v=${VERSION}`;
-    }
-    return `https://files.camiloh.co/${name}?v=${VERSION}`;
-  }
-
-  function fileNameFromPath(pathOrUrl) {
-    return String(pathOrUrl).split("?")[0].split("/").pop() || "game.bin";
-  }
-
   function showError(title, detail) {
     if (loadTimeout) {
       clearTimeout(loadTimeout);
@@ -117,7 +82,7 @@
   }
 
   // =============================================
-  //  VOLVER AL MENÚ
+  //  VOLVER AL MENÚ (SIN RELOAD — importante en móvil)
   // =============================================
   function backToMenu() {
     if (loadTimeout) {
@@ -125,9 +90,11 @@
       loadTimeout = null;
     }
 
+    // Limpiar canvas / DOM del emulador
     const gameDiv = document.getElementById("game");
     if (gameDiv) gameDiv.innerHTML = "";
 
+    // Liberar blob de ROMs grandes
     if (window.__currentBlobUrl) {
       try {
         URL.revokeObjectURL(window.__currentBlobUrl);
@@ -135,6 +102,7 @@
       window.__currentBlobUrl = null;
     }
 
+    // Restaurar UI
     gameContainer.style.display = "none";
     loading.style.display = "none";
     btnBack.style.display = "none";
@@ -151,6 +119,7 @@
 
     menu.style.display = "flex";
 
+    // Permitir recargar EmulatorJS en el próximo juego
     window.__ejsLoaded = false;
     document.querySelectorAll("script[data-ejs]").forEach((s) => s.remove());
   }
@@ -169,7 +138,7 @@
   // =============================================
   //  DESCARGA CON PROGRESO
   // =============================================
-  async function downloadRomWithProgress(url, sizeMB, fileName) {
+  async function downloadRomWithProgress(url, sizeMB) {
     progressWrap.style.display = "block";
     progressBar.style.width = "0%";
     setStatus(
@@ -177,21 +146,9 @@
       sizeMB ? `0 / ${formatSize(sizeMB)}` : "Conectando..."
     );
 
-    const res = await fetch(url, {
-      method: "GET",
-      mode: "cors",
-      credentials: "omit",
-      cache: "no-store"
-    });
+    const res = await fetch(url);
     if (!res.ok) {
       throw new Error(`No se pudo descargar (HTTP ${res.status})`);
-    }
-
-    const ct = (res.headers.get("Content-Type") || "").toLowerCase();
-    if (ct.includes("text/html")) {
-      throw new Error(
-        "La URL devolvió HTML en lugar del ROM. Revisa /files vs files.camiloh.co"
-      );
     }
 
     const total =
@@ -226,11 +183,7 @@
     await sleep(80);
 
     const blob = new Blob(chunks);
-    const name = fileName || "game.bin";
-    const file = new File([blob], name, {
-      type: "application/octet-stream"
-    });
-    return URL.createObjectURL(file);
+    return URL.createObjectURL(blob);
   }
 
   // =============================================
@@ -251,6 +204,7 @@
     const errBtn = document.getElementById("btn-error-back");
     if (errBtn) errBtn.remove();
 
+    // Limpiar partida anterior
     const gameDiv = document.getElementById("game");
     if (gameDiv) gameDiv.innerHTML = "";
     if (window.__currentBlobUrl) {
@@ -263,40 +217,22 @@
     window.__ejsLoaded = false;
 
     try {
-      const resolvedRom = resolveFileUrl(game.rom);
-      const resolvedBios = game.bios ? resolveFileUrl(game.bios) : "";
-      let romUrl = resolvedRom;
-
-      // PSX / muy grandes: URL directa (no blob en RAM)
-      const isHuge =
-        game.core === "psx" ||
-        game.core === "psp" ||
-        (game.sizeMB || 0) >= 80;
+      let romUrl = game.rom;
 
       const needsDownload =
-        !isHuge &&
-        (resolvedRom.startsWith("http") ||
-          resolvedRom.startsWith("/files") ||
-          (game.sizeMB || 0) >= 2);
+        game.rom.startsWith("http") ||
+        game.rom.startsWith("/files") ||
+        (game.sizeMB || 0) >= 2;
 
       if (needsDownload) {
         setStatus("Descargando ROM...", game.name);
         await sleep(50);
-        const fname = fileNameFromPath(game.rom);
-        romUrl = await downloadRomWithProgress(
-          resolvedRom,
-          game.sizeMB,
-          fname
-        );
+        romUrl = await downloadRomWithProgress(game.rom, game.sizeMB);
         window.__currentBlobUrl = romUrl;
       } else {
-        setStatus(
-          isHuge ? "ROM grande: carga directa..." : "Cargando ROM...",
-          formatSize(game.sizeMB) || game.name
-        );
-        progressBar.style.width = "45%";
+        setStatus("Cargando ROM local...", formatSize(game.sizeMB) || game.name);
+        progressBar.style.width = "40%";
         await sleep(150);
-        romUrl = resolvedRom;
       }
 
       setStatus("ROM lista", "Configurando emulador...");
@@ -310,33 +246,28 @@
       progressBar.style.width = "55%";
       await sleep(100);
 
-      const timeoutMs = game.core === "psx" ? 180000 : 60000;
+      const timeoutMs = game.core === "psx" ? 120000 : 60000;
       if (loadTimeout) clearTimeout(loadTimeout);
       loadTimeout = setTimeout(() => {
         showError(
           "El emulador se quedó cargando",
           game.core === "psx"
-            ? "PSX en móvil suele fallar con ROMs grandes. Prueba en PC o un .chd más ligero."
+            ? "PSX en móvil suele fallar con ROMs grandes por memoria. Prueba en PC o usa una ROM .chd más ligera."
             : "Tiempo de espera agotado. Vuelve al menú e inténtalo de nuevo."
         );
       }, timeoutMs);
 
-      const EJS_BASE =
-        location.hostname.endsWith("discordsays.com") ||
-        location.hostname.endsWith("discordapigateway.com")
-          ? "/emulatorjs/stable/data/"
-          : "https://cdn.emulatorjs.org/stable/data/";
-
+      // Configuración EmulatorJS
       window.EJS_player = "#game";
       window.EJS_core = game.core;
       window.EJS_gameUrl = romUrl;
-      window.EJS_biosUrl = resolvedBios;
-      window.EJS_pathtodata = EJS_BASE;
+      window.EJS_pathtodata = "/emulatorjs/stable/data/";
       window.EJS_startOnLoaded = true;
       window.EJS_color = "#000000";
       window.EJS_gameID = game.id;
       window.EJS_gameName = game.name;
 
+      // Controles por juego
       const layout =
         typeof CONTROL_LAYOUTS !== "undefined"
           ? CONTROL_LAYOUTS[game.controls] || CONTROL_LAYOUTS.default
@@ -348,6 +279,7 @@
         delete window.EJS_VirtualGamepadSettings;
       }
 
+      // Netplay manual
       window.EJS_netplayServer = "https://netplay.emulatorjs.org/";
       window.EJS_netplayICEServers = [
         { urls: "stun:stun.l.google.com:19302" },
@@ -358,6 +290,7 @@
         window.EJS_playerName = window.discordUser.username;
       }
 
+      // Cuando el juego arranca de verdad
       window.EJS_onGameStart = function () {
         if (loadTimeout) {
           clearTimeout(loadTimeout);
@@ -375,7 +308,7 @@
       await sleep(50);
 
       const script = document.createElement("script");
-      script.src = `${EJS_BASE}loader.js?v=${VERSION}`;
+      script.src = `/emulatorjs/stable/data/loader.js?v=${VERSION}`;
       script.setAttribute("data-ejs", "1");
       script.onload = function () {
         window.__ejsLoaded = true;
@@ -385,7 +318,7 @@
       script.onerror = function () {
         showError(
           "No se pudo cargar EmulatorJS",
-          "Revisa el URL Mapping de /emulatorjs o la conexión al CDN"
+          "Revisa el URL Mapping de /emulatorjs"
         );
       };
       document.body.appendChild(script);
@@ -396,7 +329,7 @@
   }
 
   // =============================================
-  //  CONTROLES MÓVILES
+  //  POSICIÓN CONTROLES MÓVILES
   // =============================================
   function fixControlPositions() {
     const openBtn = document.querySelector(".ejs_virtualGamepad_open");
