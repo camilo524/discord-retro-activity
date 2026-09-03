@@ -257,16 +257,28 @@
         );
       }, timeoutMs);
 
-      // Configuración EmulatorJS
+
+      //Configuracion emuladorJS//
+      
+      const EJS_BASE =
+        location.hostname.endsWith("discordsays.com") ||
+        location.hostname.endsWith("discordapigateway.com")
+          ? "/emulatorjs/stable/data/"
+          : "https://cdn.emulatorjs.org/stable/data/";
+      
       window.EJS_player = "#game";
       window.EJS_core = game.core;
-      window.EJS_gameUrl = romUrl;
-      if (game.bios) {
-        window.EJS_biosUrl = game.bios;
+      
+      // Arcade: URL directa para conservar el nombre del zip
+      const isArcade = game.core === "arcade" || game.core === "fbneo";
+      if (isArcade) {
+        window.EJS_gameUrl = game.rom;
       } else {
-        window.EJS_biosUrl = "";
+        window.EJS_gameUrl = romUrl; // blob o url según tu lógica actual
       }
-      window.EJS_pathtodata = "/emulatorjs/stable/data/";
+      
+      window.EJS_biosUrl = game.bios || "";
+      window.EJS_pathtodata = EJS_BASE;
       window.EJS_startOnLoaded = true;
       window.EJS_color = "#000000";
       window.EJS_gameID = game.id;
@@ -313,7 +325,7 @@
       await sleep(50);
 
       const script = document.createElement("script");
-      script.src = `/emulatorjs/stable/data/loader.js?v=${VERSION}`;
+      script.src = `${EJS_BASE}loader.js?v=${VERSION}`;
       script.setAttribute("data-ejs", "1");
       script.onload = function () {
         window.__ejsLoaded = true;
