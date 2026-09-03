@@ -1,4 +1,4 @@
-const VERSION = "0008"; // cámbialo cada vez que subas algo
+const VERSION = "0009"; // cámbialo cada vez que subas algo
 
 // =============================================
 //  CONFIGURACIÓN DE JUEGOS
@@ -49,9 +49,9 @@ const GAMES = [
     id: 5,
     name: "Bloody Roar",
     core: "psx",
-    rom: "https://files.camiloh.co/bloody-roar.zip",
+    rom: "/files/bloody-roar.zip",
     cover: "./covers/blody.webp",
-    sizeMB: 200,
+    sizeMB: 277,
     controls: "diamond"              // rombo: Y X / B A
   },
   {
