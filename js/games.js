@@ -16,6 +16,16 @@ const GAMES = [
   },
   {
     id: 2,
+    name: "Metal Slug 2",
+    core: "psx",
+    rom: "/files/mslug2.zip",
+    cover: "./covers/mslug3.webp",   // imagen optimizada
+    sizeMB: 17,                    // peso aproximado en MB
+    // layout: "default" | "diamond" | "nes"
+    controls: "default"
+  },
+  {
+    id: 3,
     name: "Metal Slug 3",
     core: "arcade",
     rom: "/files/mslug3.zip",
@@ -25,7 +35,7 @@ const GAMES = [
     controls: "default"
   },
   {
-    id: 3,
+    id: 4,
     name: "Super Mario Bros",
     core: "nes",
     rom: "./roms/SuperMarioBros.nes",
@@ -34,7 +44,7 @@ const GAMES = [
     controls: "nes"
   },
   {
-    id: 4,
+    id: 5,
     name: "Bloody Roar",
     core: "psx",
     rom: "/files/bloody-roar.zip",
@@ -43,7 +53,7 @@ const GAMES = [
     controls: "diamond"              // rombo: Y X / B A
   },
   {
-    id: 5,
+    id: 6,
     name: "Road Fighter",
     core: "nes",
     rom: "./roms/roadf.nes",
