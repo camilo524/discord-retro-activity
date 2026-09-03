@@ -22,7 +22,7 @@ const GAMES = [
     core: "arcade",
     rom: "/files/mslug2.zip",
     bios: "/files/neogeo.zip",
-    cover: "./covers/mslug3.webp",
+    cover: "./covers/mslug2.webp",
     sizeMB: 17.8,
     controls: "default"
   },
@@ -41,7 +41,7 @@ const GAMES = [
     name: "Super Mario Bros",
     core: "nes",
     rom: "./roms/SuperMarioBros.nes",
-    cover: "./covers/mario.webp",
+    cover: "./covers/supermario.webp",
     sizeMB: 0.04,
     controls: "nes"
   },
@@ -50,7 +50,7 @@ const GAMES = [
     name: "Bloody Roar",
     core: "psx",
     rom: "/files/bloody-roar.zip",
-    cover: "./covers/bloody-roar.webp",
+    cover: "./covers/blody.webp",
     sizeMB: 200,
     controls: "diamond"              // rombo: Y X / B A
   },
