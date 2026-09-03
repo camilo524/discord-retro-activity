@@ -308,7 +308,7 @@
       await sleep(50);
 
       const script = document.createElement("script");
-      script.src = "/emulatorjs/stable/data/loader.js";
+      script.src = `/emulatorjs/stable/data/loader.js?v=${VERSION}`;
       script.setAttribute("data-ejs", "1");
       script.onload = function () {
         window.__ejsLoaded = true;
