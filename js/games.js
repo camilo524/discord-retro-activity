@@ -30,7 +30,7 @@ const GAMES = [
     id: 3,
     name: "Metal Slug 3",
     core: "arcade",
-    rom: `/files/mslug3.zip?v=${VERSION}`,
+    rom: "https://files.camiloh.co/mslug3.zip",
     bios: `./roms/neogeo.zip?v=${VERSION}`,
     cover: "./covers/mslug3.webp",
     sizeMB: 81,
