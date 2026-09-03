@@ -10,7 +10,7 @@ const GAMES = [
     id: 1,
     name: "Contra",
     core: "nes",
-    rom: "./roms/contra.nes",
+    rom: "contra.nes",
     cover: "./covers/contra.webp",   // imagen optimizada
     sizeMB: 0.13,                    // peso aproximado en MB
     // layout: "default" | "diamond" | "nes"
