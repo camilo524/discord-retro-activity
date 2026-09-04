@@ -18,7 +18,7 @@ const GAMES = [
   },
   {
     id: 2,
-    name: "Metal Slug 2",
+    name: "Metal Slug: Super Vehicle-001",
     core: "arcade",
     rom: "https://files.camiloh.co/mslug.zip",
     bios: "neogeo.zip",
@@ -68,7 +68,7 @@ const GAMES = [
     name: "King Of Fighters 98",
     core: "arcade",
     rom: "https://files.camiloh.co/kof98.zip",
-    bios: "https://files.camiloh.co/neogeo.zip",
+    bios: "neogeo.zip",
     cover: "./covers/road-fighter.webp",
     sizeMB: 0.03,
     controls: "default"
