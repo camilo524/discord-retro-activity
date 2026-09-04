@@ -31,6 +31,7 @@ const GAMES = [
     name: "Metal Slug 3",
     core: "arcade",
     rom: "https://files.camiloh.co/mslug3.zip",
+    bios: "https://files.camiloh.co/arcade.7z",
     cover: "./covers/mslug3.webp",
     sizeMB: 81,
     controls: "default"
