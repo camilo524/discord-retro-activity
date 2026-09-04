@@ -23,7 +23,7 @@ const GAMES = [
     rom: "https://files.camiloh.co/mslug.zip",
     bios: "neogeo.zip",
     cover: "./covers/mslug2.webp",
-    sizeMB: 17.8,
+    sizeMB: 13,
     controls: "default"
   },
   {
@@ -33,7 +33,7 @@ const GAMES = [
     rom: "https://files.camiloh.co/mslug3.zip",
     bios: "https://files.camiloh.co/arcade.7z",
     cover: "./covers/mslug3.webp",
-    sizeMB: 81,
+    sizeMB: 82,
     controls: "default"
   },
     {
@@ -42,7 +42,7 @@ const GAMES = [
     core: "nes",
     rom: "./roms/SuperMarioBros.nes",
     cover: "./covers/supermario.webp",
-    sizeMB: 0.04,
+    sizeMB: 0.40,
     controls: "nes"
   },
   {
@@ -60,7 +60,7 @@ const GAMES = [
     core: "nes",
     rom: "./roms/roadf.nes",
     cover: "./covers/road-fighter.webp",
-    sizeMB: 0.03,
+    sizeMB: 0.24,
     controls: "nes"
   },
   {
@@ -69,8 +69,17 @@ const GAMES = [
     core: "arcade",
     rom: "https://files.camiloh.co/kof98.zip",
     bios: "neogeo.zip",
-    cover: "./covers/road-fighter.webp",
-    sizeMB: 0.03,
+    cover: "./covers/kof98.webp",
+    sizeMB: 40,
+    controls: "default"
+  },
+  {
+    id: 8,
+    name: "Teenage Mutant Ninja Turtles",
+    core: "arcade",
+    rom: "https://files.camiloh.co/tmnt2po.zip",
+    cover: "./covers/turtle.webp",
+    sizeMB: 1.85,
     controls: "default"
   }
 ];
