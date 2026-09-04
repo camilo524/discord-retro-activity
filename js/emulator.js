@@ -322,6 +322,15 @@
         );
       }, timeoutMs);
 
+      function romUrlFor(rawUrl) {
+        if (!rawUrl.startsWith("http")) return rawUrl;
+        if (location.hostname.endsWith("discordsays.com") ||
+            location.hostname.endsWith("discordapigateway.com")) {
+          return rawUrl.replace("https://files.camiloh.co/", "/files/");
+        }
+        return rawUrl;
+      }
+
 
       //Configuracion emuladorJS//
       
@@ -340,9 +349,9 @@
       // Arcade: URL directa para conservar el nombre del zip
       const isArcade = game.core === "arcade" || game.core === "fbneo";
       if (isArcade) {
-        window.EJS_gameUrl = game.rom;
+        window.EJS_gameUrl = romUrlFor(game.rom);
       } else {
-        window.EJS_gameUrl = romUrl; // blob o url según tu lógica actual
+        window.EJS_biosUrl = romUrlFor(game.bios || "") // blob o url según tu lógica actual
       }
       
       window.EJS_biosUrl = game.bios || "";
