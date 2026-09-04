@@ -325,11 +325,14 @@
 
       //Configuracion emuladorJS//
       
+      // Fijado a 4.2.3 (misma versión que usa fbneo.com) en vez de "stable",
+      // que va cambiando de contenido con el tiempo.
+      const EJS_PINNED_VERSION = "4.2.3";
       const EJS_BASE =
         location.hostname.endsWith("discordsays.com") ||
         location.hostname.endsWith("discordapigateway.com")
           ? "/emulatorjs/stable/data/"
-          : "https://cdn.emulatorjs.org/stable/data/";
+          : `https://cdn.emulatorjs.org/${EJS_PINNED_VERSION}/data/`;
       
       window.EJS_player = "#game";
       window.EJS_core = game.core;
