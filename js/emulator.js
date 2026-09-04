@@ -160,6 +160,22 @@
   });
 
   // =============================================
+  //  REESCRITURA DE URLs PARA DISCORD ACTIVITIES
+  //  (fuera de startGame para que quede clara y no
+  //   se redefina en cada llamada)
+  // =============================================
+  function romUrlFor(rawUrl) {
+    if (!rawUrl || !rawUrl.startsWith("http")) return rawUrl;
+    if (
+      location.hostname.endsWith("discordsays.com") ||
+      location.hostname.endsWith("discordapigateway.com")
+    ) {
+      return rawUrl.replace("https://files.camiloh.co/", "/files/");
+    }
+    return rawUrl;
+  }
+
+  // =============================================
   //  DESCARGA CON PROGRESO
   // =============================================
   async function downloadRomWithProgress(url, sizeMB) {
@@ -279,20 +295,25 @@
     window.__ejsLoaded = false;
 
     try {
-      let romUrl = game.rom;
+      // URLs ya reescritas: dentro de Discord usan /files/..., fuera usan
+      // https://files.camiloh.co/... tal cual. Esto se calcula UNA vez y se
+      // reutiliza tanto para la descarga con progreso como para EJS_gameUrl,
+      // así nunca se le pasa a fetch() ni a EmulatorJS una URL cruda sin
+      // pasar por el proxy de la Activity.
+      const fetchableRom = romUrlFor(game.rom);
+      const fetchableBios = game.bios ? romUrlFor(game.bios) : "";
+
+      let romUrl = fetchableRom;
 
       const needsDownload =
-        game.rom.startsWith("http") ||
-        game.rom.startsWith("http") ||
-        game.rom.startsWith("https") ||
-        game.rom.startsWith("/files") ||
-        game.rom.startsWith("/files") ||
+        fetchableRom.startsWith("http") ||
+        fetchableRom.startsWith("/files") ||
         (game.sizeMB || 0) >= 2;
 
       if (needsDownload) {
         setStatus("Descargando ROM...", game.name);
         await sleep(50);
-        romUrl = await downloadRomWithProgress(game.rom, game.sizeMB);
+        romUrl = await downloadRomWithProgress(fetchableRom, game.sizeMB);
         window.__currentBlobUrl = romUrl;
       } else {
         setStatus("Cargando ROM local...", formatSize(game.sizeMB) || game.name);
@@ -322,18 +343,8 @@
         );
       }, timeoutMs);
 
-      function romUrlFor(rawUrl) {
-        if (!rawUrl.startsWith("http")) return rawUrl;
-        if (location.hostname.endsWith("discordsays.com") ||
-            location.hostname.endsWith("discordapigateway.com")) {
-          return rawUrl.replace("https://files.camiloh.co/", "/files/");
-        }
-        return rawUrl;
-      }
-
-
       //Configuracion emuladorJS//
-      
+
       // Fijado a 4.2.3 (misma versión que usa fbneo.com) en vez de "stable",
       // que va cambiando de contenido con el tiempo.
       const EJS_PINNED_VERSION = "4.2.3";
@@ -342,19 +353,21 @@
         location.hostname.endsWith("discordapigateway.com")
           ? "/emulatorjs/stable/data/"
           : `https://cdn.emulatorjs.org/${EJS_PINNED_VERSION}/data/`;
-      
+
       window.EJS_player = "#game";
       window.EJS_core = game.core;
-      
-      // Arcade: URL directa para conservar el nombre del zip
+
+      // Arcade: URL directa (ya reescrita si estamos en Discord) para
+      // conservar el nombre del zip, que FBNeo/MAME necesita para
+      // identificar el romset.
       const isArcade = game.core === "arcade" || game.core === "fbneo";
       if (isArcade) {
-        window.EJS_gameUrl = romUrlFor(game.rom);
+        window.EJS_gameUrl = fetchableRom;
       } else {
-        window.EJS_biosUrl = romUrlFor(game.bios || "") // blob o url según tu lógica actual
+        window.EJS_gameUrl = romUrl; // blob ya descargado
       }
-      
-      window.EJS_biosUrl = game.bios || "";
+
+      window.EJS_biosUrl = fetchableBios;
       window.EJS_pathtodata = EJS_BASE;
       window.EJS_startOnLoaded = true;
       window.EJS_color = "#000000";
