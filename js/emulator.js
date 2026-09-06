@@ -387,14 +387,8 @@
       }
 
       // Netplay manual
-      window.EJS_netplayServer = "https://netplay.emulatorjs.org/";
-      window.EJS_netplayICEServers = [
-        { urls: "stun:stun.l.google.com:19302" },
-        { urls: "stun:stun1.l.google.com:19302" }
-      ];
-
-      if (window.discordUser && window.discordUser.username) {
-        window.EJS_playerName = window.discordUser.username;
+      if (window.applyNetplayConfig) {
+        window.applyNetplayConfig(game);
       }
 
       // Cuando el juego arranca de verdad
