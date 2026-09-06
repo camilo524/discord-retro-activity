@@ -161,8 +161,6 @@
 
   // =============================================
   //  REESCRITURA DE URLs PARA DISCORD ACTIVITIES
-  //  (fuera de startGame para que quede clara y no
-  //   se redefina en cada llamada)
   // =============================================
   function romUrlFor(rawUrl) {
     if (!rawUrl || !rawUrl.startsWith("http")) return rawUrl;
@@ -177,6 +175,9 @@
 
   // =============================================
   //  DESCARGA CON PROGRESO
+  //  Devuelve el Blob descargado (NO una blob: URL),
+  //  para que quien la llame decida si la usa directo
+  //  o la guarda primero en RomCache.
   // =============================================
   async function downloadRomWithProgress(url, sizeMB) {
     progressWrap.style.display = "block";
@@ -260,8 +261,7 @@
     setStatus("ROM descargada", "Creando archivo en memoria...");
     await sleep(80);
 
-    const blob = new Blob(chunks);
-    return URL.createObjectURL(blob);
+    return new Blob(chunks);
   }
 
   // =============================================
@@ -296,12 +296,14 @@
 
     try {
       // URLs ya reescritas: dentro de Discord usan /files/..., fuera usan
-      // https://files.camiloh.co/... tal cual. Esto se calcula UNA vez y se
-      // reutiliza tanto para la descarga con progreso como para EJS_gameUrl,
-      // así nunca se le pasa a fetch() ni a EmulatorJS una URL cruda sin
-      // pasar por el proxy de la Activity.
+      // https://files.camiloh.co/... tal cual.
       const fetchableRom = romUrlFor(game.rom);
       const fetchableBios = game.bios ? romUrlFor(game.bios) : "";
+
+      // Arcade necesita la URL directa (no blob) para que FBNeo/MAME
+      // reconozca el nombre real del .zip — por eso su descarga NO
+      // pasa por la caché, solo se usa para la barra de progreso.
+      const isArcade = game.core === "arcade" || game.core === "fbneo";
 
       let romUrl = fetchableRom;
 
@@ -313,7 +315,32 @@
       if (needsDownload) {
         setStatus("Descargando ROM...", game.name);
         await sleep(50);
-        romUrl = await downloadRomWithProgress(fetchableRom, game.sizeMB);
+
+        if (isArcade) {
+          const blob = await downloadRomWithProgress(fetchableRom, game.sizeMB);
+          romUrl = URL.createObjectURL(blob);
+        } else {
+          const cacheKey = `rom:${game.id}`;
+          const cached = window.RomCache
+            ? await window.RomCache.get(cacheKey)
+            : null;
+
+          if (cached) {
+            setStatus("ROM en caché", "Cargando desde tu dispositivo...");
+            progressBar.style.width = "90%";
+            await sleep(80);
+            romUrl = URL.createObjectURL(cached);
+          } else {
+            const blob = await downloadRomWithProgress(fetchableRom, game.sizeMB);
+            romUrl = URL.createObjectURL(blob);
+            if (window.RomCache) {
+              window.RomCache.save(cacheKey, blob).catch((e) =>
+                console.warn("No se pudo guardar en caché:", e)
+              );
+            }
+          }
+        }
+
         window.__currentBlobUrl = romUrl;
       } else {
         setStatus("Cargando ROM local...", formatSize(game.sizeMB) || game.name);
@@ -360,11 +387,10 @@
       // Arcade: URL directa (ya reescrita si estamos en Discord) para
       // conservar el nombre del zip, que FBNeo/MAME necesita para
       // identificar el romset.
-      const isArcade = game.core === "arcade" || game.core === "fbneo";
       if (isArcade) {
         window.EJS_gameUrl = fetchableRom;
       } else {
-        window.EJS_gameUrl = romUrl; // blob ya descargado
+        window.EJS_gameUrl = romUrl; // blob (de caché o recién descargado)
       }
 
       window.EJS_biosUrl = fetchableBios;
@@ -386,7 +412,8 @@
         delete window.EJS_VirtualGamepadSettings;
       }
 
-      // Netplay manual
+      // Netplay (por ahora sin botón visible: EmulatorJS no lo soporta
+      // todavía en su versión estable)
       if (window.applyNetplayConfig) {
         window.applyNetplayConfig(game);
       }
