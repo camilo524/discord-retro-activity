@@ -49,7 +49,7 @@ const GAMES = [
     id: 5,
     name: "Bloody Roar",
     core: "psx",
-    rom: "https://files.camiloh.co/bloody-roar.zip",
+    rom: "/files/bloar.zip",
     cover: "./covers/blody.webp",
     sizeMB: 277,
     controls: "diamond"              // rombo: Y X / B A
@@ -98,6 +98,15 @@ const GAMES = [
     rom: "./roms/IceClimber.nes",
     cover: "./covers/icec.webp",
     sizeMB: 0.22,
+    controls: "default"
+  },
+  {
+    id: 11,
+    name: "Silent Hill 1",
+    core: "psx",
+    rom: "https://files.camiloh.co/Silent%20Hill%20(USA).7z",
+    cover: "./covers/shill.webp",
+    sizeMB: 240,
     controls: "default"
   }
 ];
