@@ -2,7 +2,7 @@ Hola!, me alegro que estes por aca, este es un proyecto que se ha trabajado con 
 Aqui solo encontraras la pagina en la que corre el emulador.
 Si llegas a necesitar el codigo para correr la activida escribeme!
 
-Puedes probar el emuladore directamente en retro.camiloh.co
+Puedes probar el emulador directamente en https://retro.camiloh.co/
 Y tambien puedes probarlo en mi server de Discord!: https://discord.gg/QAtMaM4yg
 
 
