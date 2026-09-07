@@ -81,6 +81,24 @@ const GAMES = [
     cover: "./covers/turtle.webp",
     sizeMB: 1.85,
     controls: "default"
+  },
+  {
+    id: 9,
+    name: "Donkey Kong",
+    core: "nes",
+    rom: "./roms/DonkeyKong.nes",
+    cover: "./covers/donkong.webp",
+    sizeMB: 0.55,
+    controls: "default"
+  },
+  {
+    id: 10,
+    name: "Ice Climber",
+    core: "nes",
+    rom: "./roms/IceClimber.nes",
+    cover: "./covers/icec.webp",
+    sizeMB: 0.22,
+    controls: "default"
   }
 ];
 
