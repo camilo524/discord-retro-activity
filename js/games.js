@@ -49,7 +49,7 @@ const GAMES = [
     id: 5,
     name: "Bloody Roar",
     core: "psx",
-    rom: "https://files.camiloh.co/bloar.zip",
+    rom: "https://files.camiloh.co/bloody-roar.zip",
     cover: "./covers/blody.webp",
     sizeMB: 277,
     controls: "diamond"              // rombo: Y X / B A
