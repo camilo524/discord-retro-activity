@@ -142,6 +142,7 @@
     if (errBtn) errBtn.remove();
 
     menu.style.display = "flex";
+    if (window.playMenuMusic) window.playMenuMusic();
 
     // Permitir recargar EmulatorJS en el próximo juego
     window.__ejsLoaded = false;
@@ -269,6 +270,7 @@
   // =============================================
   async function startGame(game) {
     menu.style.display = "none";
+    if (window.stopMenuMusic) window.stopMenuMusic();
     loading.style.display = "flex";
     const spinner = loading.querySelector(".spinner");
     if (spinner) spinner.style.display = "block";
