@@ -4,15 +4,17 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Camulador</title>
-  <link rel="stylesheet" href="./css/styles.css" />
+  <link rel="stylesheet" href="./css/styles.css?v=01" />
   <link rel="icon" type="image/png" href="./assets/favicon.png">
 </head>
 <body>
   <div id="menu">
-    <h1>🕹️ CAMULADOR</h1>
-    <p class="subtitle">Elige un juego · Controles en (☰)</p>
-    <p class="music-credit">🎵 Música: <strong>4RM0R</strong></p>
-    <div class="games-grid" id="games-grid"></div>
+    <div class="menu-inner">
+      <h1>🕹️ CAMULADOR</h1>
+      <p class="subtitle">Elige un juego · Controles en (☰)</p>
+      <p class="music-credit">🎵 Música: <strong>4RM0R</strong></p>
+      <div class="games-grid" id="games-grid"></div>
+    </div>
   </div>
   
   <audio id="menu-music" src="./assets/NEOby4RM0R.mp3" loop preload="auto"></audio>
@@ -36,7 +38,7 @@
   <script src="./js/rom-cache.js?v=2"></script>
   <script src="./js/netplay.js?v=1"></script>
   <script src="./js/menu-music.js?v=1"></script>
-  <script src="./js/emulator.js?v=05"></script>
+  <script src="./js/emulator.js?v=06"></script>
   <script type="module" src="./app.js"></script>
 </body>
 </html>
