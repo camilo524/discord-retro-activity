@@ -104,8 +104,8 @@
     } catch (e) {
       console.warn("No se pudo cerrar el emulador limpiamente:", e);
     }
-    // Red de seguridad: silenciar/soltar cualquier <audio> que haya quedado vivo
-    document.querySelectorAll("audio").forEach((a) => {
+    // Red de seguridad: silenciar/soltar cualquier <audio> que haya quedado vivo, menos el del menu
+    document.querySelectorAll("audio:not(#menu-music)").forEach((a) => {
       try {
         a.pause();
         a.muted = true;
