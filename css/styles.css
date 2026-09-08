@@ -16,11 +16,43 @@ html, body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  /* flex-start (no center): si el contenido no cabe en ventanas bajas
+     (ej. la vista mini de Discord Activities), "center" lo empuja fuera
+     del scroll alcanzable. .menu-inner se encarga de centrar SOLO
+     cuando sobra espacio, con margin:auto. */
+  justify-content: flex-start;
   background: linear-gradient(160deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%);
   z-index: 30;
   padding: 24px 16px;
   overflow-y: auto;
+}
+
+.menu-inner {
+  margin: auto 0; /* centra verticalmente cuando hay espacio de sobra */
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.music-credit {
+  color: #7dd3fc;
+  font-size: 0.8rem;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+/* Ventanas muy bajas (ej. vista mini/flotante de Discord Activities):
+   todo más compacto para que quepa sin cortar nada. */
+@media (max-height: 480px) {
+  #menu { padding: 12px 16px; }
+  #menu h1 { font-size: 1.3rem; margin-bottom: 2px; }
+  #menu .subtitle { font-size: 0.8rem; margin-bottom: 6px; }
+  .music-credit { font-size: 0.72rem; margin-bottom: 10px; }
+  .games-grid { gap: 8px; }
+  .game-card { padding: 6px; }
+  .game-card .name { font-size: 0.75rem; }
+  .game-card .meta { font-size: 0.6rem; margin-top: 2px; }
 }
 
 #menu h1 {
