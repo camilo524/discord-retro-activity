@@ -9,6 +9,7 @@
   const menu = document.getElementById("menu");
   const gameContainer = document.getElementById("game-container");
 
+  let currentGame = null; // el juego activo, para saber a quién guardarle el estado
   let loadTimeout = null;
 
   // =============================================
@@ -93,6 +94,19 @@
     // Apagar el emulador correctamente ANTES de limpiar el DOM.
     // Borrar el div no detiene el AudioContext interno de EmulatorJS —
     // por eso la música seguía sonando al volver al menú.
+    // Guardar automáticamente antes de cerrar el emulador
+    try {
+      if (currentGame && window.SaveStates && window.EJS_emulator?.gameManager?.getState) {
+        const state = window.EJS_emulator.gameManager.getState();
+        if (state && state.length > 0) {
+          window.SaveStates.save(currentGame.id, state).catch((e) =>
+            console.warn("No se pudo guardar la partida:", e)
+          );
+        }
+      }
+    } catch (e) {
+      console.warn("No se pudo capturar el estado del juego:", e);
+    }
     try {
       if (window.EJS_emulator && window.EJS_emulator.gameManager) {
         if (typeof window.EJS_emulator.gameManager.exit === "function") {
@@ -269,6 +283,7 @@
   //  INICIAR JUEGO
   // =============================================
   async function startGame(game) {
+    currentGame = game;
     menu.style.display = "none";
     if (window.stopMenuMusic) window.stopMenuMusic();
     loading.style.display = "flex";
@@ -422,6 +437,18 @@
 
       // Cuando el juego arranca de verdad
       window.EJS_onGameStart = function () {
+        window.EJS_onGameStart = async function () {
+          if (window.SaveStates) {
+            try {
+              const saved = await window.SaveStates.get(game.id);
+              if (saved && window.EJS_emulator?.gameManager?.loadState) {
+                window.EJS_emulator.gameManager.loadState(saved);
+              }
+            } catch (e) {
+              console.warn("No se pudo restaurar la partida guardada:", e);
+            }
+          }
+  // ...el resto del código que ya tenías aquí sigue igual...
         if (loadTimeout) {
           clearTimeout(loadTimeout);
           loadTimeout = null;
