@@ -436,19 +436,18 @@
       }
 
       // Cuando el juego arranca de verdad
-      window.EJS_onGameStart = function () {
-        window.EJS_onGameStart = async function () {
-          if (window.SaveStates) {
-            try {
-              const saved = await window.SaveStates.get(game.id);
-              if (saved && window.EJS_emulator?.gameManager?.loadState) {
-                window.EJS_emulator.gameManager.loadState(saved);
-              }
-            } catch (e) {
-              console.warn("No se pudo restaurar la partida guardada:", e);
+      window.EJS_onGameStart = async function () {
+        if (window.SaveStates) {
+          try {
+            const saved = await window.SaveStates.get(game.id);
+            if (saved && window.EJS_emulator?.gameManager?.loadState) {
+              window.EJS_emulator.gameManager.loadState(saved);
             }
+          } catch (e) {
+            console.warn("No se pudo restaurar la partida guardada:", e);
           }
-  // ...el resto del código que ya tenías aquí sigue igual...
+        }
+
         if (loadTimeout) {
           clearTimeout(loadTimeout);
           loadTimeout = null;
