@@ -1,10 +1,14 @@
-import { DiscordSDK } from "@discord/embedded-app-sdk";
+/**
+ * Discord SDK para Camulador.
+ * Import desde esm.sh (o copia local) — el bare "@discord/embedded-app-sdk"
+ * solo funciona con Vite/Webpack, no en hosting estático.
+ */
+import { DiscordSDK } from "https://esm.sh/@discord/embedded-app-sdk@1.9.0";
 
 const DISCORD_CLIENT_ID = "1531718181213704212";
 
 const discordSdk = new DiscordSDK(DISCORD_CLIENT_ID);
 
-// Variables globales que usa el emulador
 window.discordInstanceId = null;
 window.discordUser = null;
 
@@ -12,12 +16,9 @@ async function setupDiscordSdk() {
   try {
     await discordSdk.ready();
     console.log("✅ Discord SDK listo");
-
-    // Guardamos el instanceId (clave del multijugador)
     window.discordInstanceId = discordSdk.instanceId;
     console.log("Instance ID:", window.discordInstanceId);
 
-    // Autorización básica
     const { code } = await discordSdk.commands.authorize({
       client_id: DISCORD_CLIENT_ID,
       response_type: "code",
@@ -26,8 +27,8 @@ async function setupDiscordSdk() {
       scope: ["identify", "guilds", "guilds.members.read"],
     });
 
-    // Intentar obtener el usuario (opcional, no bloquea si falla)
     try {
+      // Token endpoint vive en el BOT (mapeo raíz), no en retro.camiloh.co
       const res = await fetch("/.proxy/api/token", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -40,14 +41,12 @@ async function setupDiscordSdk() {
         console.log("Usuario:", auth.user.username);
       }
     } catch (e) {
-      // Normal si todavía no tienes backend de token
       console.warn("Auth opcional no disponible:", e.message);
     }
 
     window.dispatchEvent(new CustomEvent("discord-ready"));
   } catch (error) {
     console.error("Error SDK:", error);
-    // Aun así permitimos jugar
     window.dispatchEvent(new CustomEvent("discord-ready"));
   }
 }

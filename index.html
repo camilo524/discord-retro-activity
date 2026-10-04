@@ -4,8 +4,28 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Camulador</title>
-  <link rel="stylesheet" href="./css/styles.css?v=01" />
-  <link rel="icon" type="image/png" href="./assets/favicon.png">
+  <!--
+    Cuando Discord proxyea /retro → retro.camiloh.co, la página se ve en:
+      https://APP.discordsays.com/retro/
+    Sin <base>, una URL sin slash final (/retro) hace que ./css resuelva a /css
+    (raíz del bot) y todo falla con 404.
+  -->
+  <script>
+    (function () {
+      var host = location.hostname || "";
+      var path = location.pathname || "/";
+      var inDiscord =
+        /\.discordsays\.com$/i.test(host) ||
+        /\.discordapigateway\.com$/i.test(host);
+      if (inDiscord && path.indexOf("/retro") === 0) {
+        var b = document.createElement("base");
+        b.href = "/retro/";
+        document.head.appendChild(b);
+      }
+    })();
+  </script>
+  <link rel="stylesheet" href="./css/styles.css?v=02" />
+  <link rel="icon" type="image/png" href="./assets/favicon.png" />
 </head>
 <body>
   <div id="menu">
@@ -16,7 +36,7 @@
       <div class="games-grid" id="games-grid"></div>
     </div>
   </div>
-  
+
   <audio id="menu-music" src="./assets/NEOby4RM0R.mp3" loop preload="auto"></audio>
 
   <div id="loading">
@@ -34,12 +54,13 @@
     <div id="game"></div>
   </div>
 
-  <script src="./js/games.js?v=05"></script>
+  <script src="./js/games.js?v=06"></script>
   <script src="./js/save-states.js?v=1"></script>
   <script src="./js/rom-cache.js?v=2"></script>
   <script src="./js/netplay.js?v=1"></script>
   <script src="./js/menu-music.js?v=1"></script>
-  <script src="./js/emulator.js?v=07"></script>
-  <script type="module" src="./app.js"></script>
+  <script src="./js/emulator.js?v=08"></script>
+  <!-- SDK: NO usar bare specifier @discord/... (rompe sin bundler) -->
+  <script type="module" src="./app.js?v=02"></script>
 </body>
 </html>
