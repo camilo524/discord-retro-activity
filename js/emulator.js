@@ -389,9 +389,9 @@
 
       //Configuracion emuladorJS//
 
-      // Fijado a 4.2.3 (misma versión que usa fbneo.com) en vez de "stable",
-      // que va cambiando de contenido con el tiempo.
-      const EJS_PINNED_VERSION = "4.2.3";
+      // Versión fijada (en vez de "stable") para que no cambie sola con el tiempo.
+      // En la rama main sigue en 4.2.3; esta rama prueba 4.3.0-pre.
+      const EJS_PINNED_VERSION = "4.3.0-pre"; // rama v2: probar primero que cdn.emulatorjs.org/4.3.0-pre/data/loader.js exista
       const inDiscord =
         location.hostname.endsWith("discordsays.com") ||
         location.hostname.endsWith("discordapigateway.com");
