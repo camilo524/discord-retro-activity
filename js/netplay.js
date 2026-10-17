@@ -23,15 +23,52 @@
     location.hostname.endsWith("discordsays.com") ||
     location.hostname.endsWith("discordapigateway.com");
 
-  // Dentro de una Activity, el cliente hace io(url). Si url tuviera
-  // una ruta (ej. /netplay), Socket.IO la tomaría como *namespace* y
-  // NO como prefijo, así que no sirve un prefijo tipo "/netplay".
-  // En su lugar se usa el origen de la Activity y se mapean en el
-  // Developer Portal las dos rutas que el cliente pide:
-  //     /socket.io  ->  host del servidor de netplay
-  //     /list       ->  host del servidor de netplay
+  // Dentro de una Activity todo pasa por el proxy de Discord, que solo
+  // deja salir hacia los hosts mapeados en el Developer Portal.
+  // Se usa UN solo mapeo (el prefijo no admite puntos, por eso no sirve
+  // "/socket.io"):
+  //     /netplay  ->  netplay.camiloh.co
+  // El cliente de EmulatorJS hace io(url) y fetch(url + "/list"). Con
+  // url = <origen>/netplay, Socket.IO tomaría "/netplay" como namespace,
+  // así que más abajo se envuelve io() para convertir esa ruta en la
+  // opción `path` (/netplay/socket.io), que es lo que Discord mapea.
   function netplayUrl() {
-    return inDiscord ? location.origin : NETPLAY_SERVER;
+    return inDiscord ? location.origin + "/netplay" : NETPLAY_SERVER;
+  }
+
+  function wrapIo(realIo) {
+    if (typeof realIo !== "function" || realIo.__camuladorWrapped) return realIo;
+    function io(uri, opts) {
+      if (inDiscord && typeof uri === "string") {
+        try {
+          const u = new URL(uri, location.origin);
+          const prefix = u.pathname.replace(/\/+$/, "");
+          if (prefix) {
+            opts = Object.assign({}, opts, { path: prefix + "/socket.io" });
+            uri = u.origin;
+          }
+        } catch (e) {}
+      }
+      return realIo.call(this, uri, opts);
+    }
+    Object.assign(io, realIo);
+    io.__camuladorWrapped = true;
+    return io;
+  }
+
+  // socket.io.min.js se carga después (lo importa emulator.js de
+  // EmulatorJS) y define window.io; se intercepta esa asignación.
+  if (inDiscord) {
+    if (typeof window.io === "function") {
+      window.io = wrapIo(window.io);
+    } else {
+      let _io;
+      Object.defineProperty(window, "io", {
+        configurable: true,
+        get() { return _io; },
+        set(v) { _io = wrapIo(v); },
+      });
+    }
   }
 
   const NETPLAY_ICE_SERVERS = [
