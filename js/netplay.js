@@ -16,7 +16,8 @@
   // Servidor de señalización. Por ahora el público de EmulatorJS;
   // si no responde con el protocolo nuevo, cámbialo por uno propio
   // (repo EmulatorJS/EmulatorJS-Netplay) y pon aquí su URL.
-  const NETPLAY_SERVER = "https://netplay.emulatorjs.org";
+  // El servidor publico de EmulatorJS ya no existe. Cambia esta URL por la de tu servidor (carpeta netplay-server/).
+  const NETPLAY_SERVER = "https://TU-SERVIDOR.onrender.com";
 
   const inDiscord =
     location.hostname.endsWith("discordsays.com") ||
