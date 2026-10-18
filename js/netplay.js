@@ -4,19 +4,16 @@
 //  toda la configuración de multiplayer vive acá,
 //  emulator.js solo la invoca.
 //
-//  Cómo funciona el cliente de la 4.3.0-pre (leído del código):
-//   - El botón de netplay solo aparece si EJS_gameID es un NÚMERO,
-//     hay EJS_netplayServer y el core soporta save states.
-//   - Se conecta con Socket.IO:  io(EJS_netplayServer)  y además
-//     pide  GET <server>/list?domain=...&game_id=...
-//   - El video/audio/inputs van por WebRTC entre jugadores; el
-//     servidor solo hace de señalización (salas).
+//  Dos modos:
+//   - Web (WebRTC): netplay nativo de EmulatorJS 4.3.0-pre. El botón solo
+//     aparece si EJS_gameID es un NÚMERO, hay EJS_netplayServer y el core
+//     soporta save states. Socket.IO solo hace de señalización (salas) y
+//     el video/audio/inputs van por WebRTC entre jugadores.
+//   - Discord / sin WebRTC: modo WebSocket propio (js/netplay-ws.js).
 // =============================================
 (function () {
-  // Servidor de señalización. Por ahora el público de EmulatorJS;
-  // si no responde con el protocolo nuevo, cámbialo por uno propio
-  // (repo EmulatorJS/EmulatorJS-Netplay) y pon aquí su URL.
-  // El servidor publico de EmulatorJS ya no existe. Cambia esta URL por la de tu servidor (carpeta netplay-server/).
+  // Servidor propio (carpeta netplay-server/). El servidor público de
+  // EmulatorJS ya no existe.
   const NETPLAY_SERVER = "https://netplay.camiloh.co";
 
   const inDiscord =
@@ -78,48 +75,6 @@
       });
     }
   }
-
-  // ---- Diagnóstico WebRTC --------------------------------------
-  // Escribe en la consola ([RTC]) el estado de ICE y los tipos de
-  // candidatos (host / srflx / relay), para depurar conexiones WebRTC.
-  // No cambia el comportamiento del netplay.
-  function rtcLog(...a) {
-    console.log("[RTC]", ...a);
-  }
-
-  function installRtcDiagnostics() {
-    const Native = window.RTCPeerConnection;
-    if (typeof Native !== "function") {
-      rtcLog("RTCPeerConnection NO disponible en este entorno (" + (inDiscord ? "Discord" : "web") + ")");
-      return;
-    }
-    if (Native.__camuladorDiag) return;
-    function Wrapped(cfg, ...rest) {
-      const pc = new Native(cfg, ...rest);
-      const id = Math.random().toString(36).slice(2, 6);
-      try {
-        const servers = ((cfg && cfg.iceServers) || []).map((x) => [].concat(x.urls).join(","));
-        rtcLog(id, "nueva conexión; iceServers:", servers.join(" | ") || "(ninguno)");
-      } catch (e) {}
-      const seen = {};
-      pc.addEventListener("icecandidate", (e) => {
-        if (!e.candidate) { rtcLog(id, "candidatos:", JSON.stringify(seen)); return; }
-        const t = e.candidate.type || (/ typ (\w+)/.exec(e.candidate.candidate) || [])[1] || "?";
-        seen[t] = (seen[t] || 0) + 1;
-      });
-      pc.addEventListener("icecandidateerror", (e) => rtcLog(id, "icecandidateerror", e.errorCode, e.errorText, e.url));
-      pc.addEventListener("iceconnectionstatechange", () => rtcLog(id, "ice:", pc.iceConnectionState));
-      pc.addEventListener("connectionstatechange", () => rtcLog(id, "conexión:", pc.connectionState));
-      pc.addEventListener("track", (e) => rtcLog(id, "track recibido:", e.track && e.track.kind));
-      return pc;
-    }
-    Wrapped.prototype = Native.prototype;
-    Object.setPrototypeOf(Wrapped, Native);
-    Wrapped.__camuladorDiag = true;
-    window.RTCPeerConnection = Wrapped;
-    rtcLog("RTCPeerConnection disponible; entorno:", inDiscord ? "Discord" : "web");
-  }
-  installRtcDiagnostics();
 
   const NETPLAY_ICE_SERVERS = [
     { urls: "stun:stun.l.google.com:19302" },

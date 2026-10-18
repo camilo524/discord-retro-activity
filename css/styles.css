@@ -253,3 +253,22 @@ html, body {
   box-sizing: border-box;
   opacity: 1 !important;
 }
+
+/* Enlace al repositorio (solo en la web; en Discord se oculta) */
+.gh-link {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: #cbd5e1;
+  background: rgba(255, 255, 255, 0.08);
+  opacity: 0.75;
+  transition: opacity 0.2s, background 0.2s;
+}
+.gh-link:hover { opacity: 1; background: rgba(255, 255, 255, 0.18); }
+.in-discord .gh-link { display: none; }

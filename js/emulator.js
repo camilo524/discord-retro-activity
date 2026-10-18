@@ -441,8 +441,7 @@
         delete window.EJS_VirtualGamepadSettings;
       }
 
-      // Netplay (por ahora sin botón visible: EmulatorJS no lo soporta
-      // todavía en su versión estable)
+      // Netplay (ver js/netplay.js)
       if (window.applyNetplayConfig) {
         window.applyNetplayConfig(game);
       }

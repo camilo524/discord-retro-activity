@@ -126,15 +126,12 @@ const CONTROLS_MODE = "stick";
 // Layout por defecto de NES en 4.3.0-pre, cambiando la cruz ("dpad")
 // por una palanca ("zone"). joystickInput:false => la palanca emite
 // direcciones digitales (arriba/abajo/izq/der), que es lo que usa NES.
-// Si no quieres los botones Fast/Slow, borra las dos últimas líneas.
 const NES_STICK_LAYOUT = [
   { type: "button", text: "B", id: "b", location: "right", right: 75, top: 70, bold: true, input_value: 0 },
   { type: "button", text: "A", id: "a", location: "right", right: 5, top: 70, bold: true, input_value: 8 },
   { type: "zone", id: "dpad", location: "left", left: "50%", top: "50%", joystickInput: false, inputValues: [4, 5, 6, 7], color: "#9aa0aa" },
   { type: "button", text: "Start", id: "start", location: "center", left: 60, fontSize: 15, block: true, input_value: 3 },
-  { type: "button", text: "Select", id: "select", location: "center", left: -5, fontSize: 15, block: true, input_value: 2 },
-  { type: "button", text: "Fast", id: "speed_fast", location: "center", left: -35, top: 50, fontSize: 15, block: true, input_value: 27 },
-  { type: "button", text: "Slow", id: "speed_slow", location: "center", left: 95, top: 50, fontSize: 15, block: true, input_value: 29 }
+  { type: "button", text: "Select", id: "select", location: "center", left: -5, fontSize: 15, block: true, input_value: 2 }
 ];
 
 const CONTROL_LAYOUTS = {

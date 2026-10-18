@@ -1,0 +1,16 @@
+# Camulador
+
+> Emulador de juegos retro (NES, arcade y PlayStation) que corre directamente en el navegador, sin instalar nada, y también como Actividad de Discord. Incluye controles táctiles para móvil, partidas guardadas y multijugador online.
+
+Proyecto personal y de hobby, hecho con ayuda de IA. Usa EmulatorJS como motor de emulación.
+
+## Enlaces
+- [Jugar](https://retro.camiloh.co/): la página principal con el menú de juegos.
+- [Código fuente](https://github.com/camilo524/discord-retro-activity): repositorio en GitHub.
+- [Servidor de Discord](https://discord.gg/QAtMaM4yg): para probarlo como Actividad.
+
+## Qué incluye
+- Juegos: Contra, Metal Slug 3, Super Mario Bros, King of Fighters 98, Teenage Mutant Ninja Turtles, Donkey Kong, Ice Climber, Road Fighter, Bloody Roar y Silent Hill.
+- Controles táctiles (joystick y botones) y teclado/gamepad en escritorio.
+- Partidas guardadas automáticamente en el navegador.
+- Multijugador online: WebRTC en la web y un modo por WebSocket dentro de Discord.

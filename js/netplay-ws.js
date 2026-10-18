@@ -7,16 +7,17 @@
 //  WebRTC, así que aquí hay un modo propio que usa únicamente el
 //  Socket.IO que ya tenemos (netplay.camiloh.co):
 //
-//   - HOST: corre el juego, captura su canvas (~24 fps, JPEG) y manda
-//     los frames por el servidor (evento "snapshot").
-//   - INVITADO: no ejecuta el juego; dibuja los frames que recibe y envía
-//     sus botones al host (evento "input"). El host los aplica como
-//     jugador 2, 3...
+//   - HOST: corre el juego, captura su canvas (~30 fps, WebP o JPEG con
+//     calidad adaptativa; no manda frames repetidos) y lo envía por el
+//     servidor (evento "snapshot"). También captura el audio del emulador
+//     (PCM mono 22 kHz) y lo envía como data-message {type:"audio"}.
+//   - INVITADO: no ejecuta el juego; dibuja los frames que recibe, reproduce
+//     el audio con un pequeño buffer y envía sus botones al host (evento
+//     "input"). El host los aplica como jugador 2, 3...
 //
 //  Se activa solo cuando window.NETPLAY_WS.enabled (lo decide netplay.js:
 //  dentro de Discord, o con ?netplay=ws para probar en la web).
-//  Limitaciones de esta primera versión: el invitado no oye el audio y
-//  hay algo de latencia (el video viaja por el servidor).
+//  Limitación: hay algo de latencia (el video viaja por el servidor).
 //
 //  API: window.NetplayWS.onGameStart(game) / onGameExit()
 // =============================================
@@ -28,9 +29,11 @@
   }
 
   // ---- Parámetros ------------------------------------------------
-  const FPS = 24;            // frames por segundo que envía el host
-  const MAX_W = 480;         // ancho máximo del frame enviado (px)
-  const QUALITY = 0.6;       // calidad JPEG
+  const FPS = 30;            // frames por segundo máximos que envía el host
+  const MAX_W = 640;         // ancho máximo del frame enviado (px)
+  const Q_MIN = 0.55;        // calidad mínima/máxima (se adapta a la conexión)
+  const Q_MAX = 0.88;
+  const AUDIO_RATE = 22050;  // Hz del audio enviado (mono, Int16)
   const MAX_PLAYERS = 4;
 
   // ---- Estado ----------------------------------------------------
@@ -51,6 +54,11 @@
   let capVideo = null;
   let capCanvas = null;
   let capCtx = null;
+  let quality = 0.8;
+  let imgType = "image/webp"; // se cae a JPEG si el navegador no codifica WebP
+  let lastSig = null;
+  let audioTap = null;       // { proc, mute, nodes, timer }
+  let audioAcc = [];         // muestras Int16 pendientes de enviar
 
   // Invitado
   let guestCanvas = null;
@@ -59,6 +67,8 @@
   let pendingFrame = null;
   let savedSim = null;       // { hadOwn, fn }
   let savedCanvasVis = "";
+  let actx = null;           // AudioContext del invitado
+  let audioNext = 0;
 
   // UI
   let btn = null;
@@ -158,6 +168,7 @@
     userId = guid();
     sessionId = sid;
     roomName = name;
+    initGuestAudio(); // dentro del gesto del usuario, para que el navegador permita sonido
     setStatus("Entrando a la sala...");
     connect(() => {
       const extra = {
@@ -188,6 +199,7 @@
     }
     stopHosting();
     stopGuest();
+    closeGuestAudio();
     if (socket && socket.connected && role) {
       try { socket.emit("leave-room"); } catch (e) {}
     }
@@ -224,7 +236,9 @@
 
   function onData(d) {
     if (!d) return;
-    if (d.type === "slots" && role === "guest") {
+    if (d.type === "audio") {
+      if (role === "guest") playAudio(d);
+    } else if (d.type === "slots" && role === "guest") {
       slotOf = d.slots || {};
       mySlot = slotOf[userId] != null ? slotOf[userId] : null;
       if (mySlot != null) setStatus("Eres el jugador " + (mySlot + 1) + ".");
@@ -264,14 +278,128 @@
       }
     } catch (err) { capVideo = null; }
     capCanvas = document.createElement("canvas");
-    capCtx = capCanvas.getContext("2d");
+    capCtx = capCanvas.getContext("2d", { willReadFrequently: true });
+    lastSig = null;
     captureTimer = setInterval(captureTick, 1000 / FPS);
+    startAudioTap();
   }
 
   function stopHosting() {
     if (captureTimer) { clearInterval(captureTimer); captureTimer = null; }
     if (capVideo) { try { capVideo.srcObject = null; } catch (e) {} capVideo = null; }
-    capCanvas = null; capCtx = null; captureBusy = false;
+    capCanvas = null; capCtx = null; captureBusy = false; lastSig = null;
+    stopAudioTap();
+  }
+
+  // Firma barata del frame (miniatura 32x24) para no reenviar imágenes idénticas.
+  const sigCanvas = document.createElement("canvas");
+  sigCanvas.width = 32; sigCanvas.height = 24;
+  const sigCtx = sigCanvas.getContext("2d", { willReadFrequently: true });
+  function frameSig(src) {
+    try {
+      sigCtx.drawImage(src, 0, 0, 32, 24);
+      const d = sigCtx.getImageData(0, 0, 32, 24).data;
+      let h = 0;
+      for (let i = 0; i < d.length; i += 4) h = (Math.imul(h, 31) + d[i] + (d[i + 1] << 1) + (d[i + 2] << 2)) | 0;
+      return h;
+    } catch (e) { return null; }
+  }
+
+  // ---- HOST: audio del emulador -> PCM -> data-message ------------
+  function findAudio() {
+    const e = emu();
+    const al = e && e.Module && e.Module.AL && e.Module.AL.currentCtx;
+    if (!al || !al.audioCtx) return null;
+    return al;
+  }
+
+  function startAudioTap() {
+    stopAudioTap();
+    const al = findAudio();
+    if (!al) { setTimeout(() => { if (role === "host" && !audioTap) startAudioTap(); }, 1500); return; }
+    const ctx = al.audioCtx;
+    try {
+      const proc = ctx.createScriptProcessor(2048, 2, 1);
+      const mute = ctx.createGain();
+      mute.gain.value = 0;               // el procesador debe estar conectado para correr, pero sin sonido propio
+      proc.connect(mute); mute.connect(ctx.destination);
+      const ratio = ctx.sampleRate / AUDIO_RATE;
+      let pos = 0;
+      proc.onaudioprocess = (ev) => {
+        if (role !== "host" || !socket || !socket.connected || Object.keys(slotOf).length === 0) return;
+        const inp = ev.inputBuffer;
+        const a = inp.getChannelData(0);
+        const b = inp.numberOfChannels > 1 ? inp.getChannelData(1) : a;
+        for (; pos < a.length; pos += ratio) {
+          const i = pos | 0;
+          const v = (a[i] + b[i]) * 0.5;
+          audioAcc.push(v < -1 ? -32768 : v > 1 ? 32767 : (v * 32767) | 0);
+        }
+        pos -= a.length;
+        if (audioAcc.length >= 1024) {
+          const pcm = new Int16Array(audioAcc);
+          audioAcc = [];
+          try { socket.emit("data-message", { type: "audio", r: AUDIO_RATE, d: toB64(pcm.buffer) }); } catch (err) {}
+        }
+      };
+      audioTap = { proc, mute, nodes: [], ctx, timer: null };
+      // Conectar el audio del juego al procesador (los "sources" de OpenAL pueden aparecer más tarde)
+      const hook = () => {
+        const cur = findAudio();
+        if (!cur || !audioTap) return;
+        const list = cur.gain ? [cur.gain] : Object.values(cur.sources || {}).map((s) => s && s.gain).filter(Boolean);
+        for (const n of list) {
+          if (audioTap.nodes.includes(n)) continue;
+          try { n.connect(proc); audioTap.nodes.push(n); } catch (err) {}
+        }
+      };
+      hook();
+      audioTap.timer = setInterval(hook, 1000);
+    } catch (err) {
+      console.warn("[NETPLAY-WS] No se pudo capturar el audio del host:", err);
+      audioTap = null;
+    }
+  }
+
+  function stopAudioTap() {
+    if (!audioTap) return;
+    clearInterval(audioTap.timer);
+    for (const n of audioTap.nodes) { try { n.disconnect(audioTap.proc); } catch (e) {} }
+    try { audioTap.proc.onaudioprocess = null; audioTap.proc.disconnect(); audioTap.mute.disconnect(); } catch (e) {}
+    audioTap = null; audioAcc = [];
+  }
+
+  // ---- INVITADO: reproducir audio ---------------------------------
+  function initGuestAudio() {
+    try {
+      if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+      if (actx.state !== "running") actx.resume().catch(() => {});
+      audioNext = 0;
+    } catch (e) { actx = null; }
+  }
+
+  function closeGuestAudio() {
+    if (actx) { try { actx.close(); } catch (e) {} actx = null; }
+  }
+
+  function playAudio(m) {
+    if (!actx || !m.d) return;
+    if (actx.state !== "running") actx.resume().catch(() => {});
+    const bytes = fromB64(m.d);
+    const pcm = new Int16Array(bytes.buffer, 0, bytes.length >> 1);
+    if (!pcm.length) return;
+    const buf = actx.createBuffer(1, pcm.length, m.r || AUDIO_RATE);
+    const ch = buf.getChannelData(0);
+    for (let i = 0; i < pcm.length; i++) ch[i] = pcm[i] / 32768;
+    const src = actx.createBufferSource();
+    src.buffer = buf;
+    src.connect(actx.destination);
+    const now = actx.currentTime;
+    // Colchón de ~120 ms; si nos atrasamos se reinicia, si nos adelantamos demasiado se descarta.
+    if (audioNext < now + 0.02) audioNext = now + 0.12;
+    else if (audioNext > now + 0.6) return;
+    src.start(audioNext);
+    audioNext += buf.duration;
   }
 
   function captureTick() {
@@ -290,19 +418,26 @@
     const h = Math.max(1, Math.round(sh * scale));
     if (capCanvas.width !== w) capCanvas.width = w;
     if (capCanvas.height !== h) capCanvas.height = h;
+    const sig = frameSig(src);
+    if (sig !== null && sig === lastSig) return; // imagen igual a la anterior
     try { capCtx.drawImage(src, 0, 0, w, h); } catch (err) { return; }
+    // Calidad adaptativa: baja si el socket se atasca, sube poco a poco si va holgado
+    if (eng && eng.writeBuffer && eng.writeBuffer.length > 0) quality = Math.max(Q_MIN, quality - 0.04);
+    else quality = Math.min(Q_MAX, quality + 0.01);
     captureBusy = true;
     capCanvas.toBlob(async (blob) => {
       try {
         if (!blob || role !== "host") return;
+        if (imgType === "image/webp" && blob.type !== "image/webp") { imgType = "image/jpeg"; return; } // Safari: sin WebP
+        lastSig = sig;
         const buf = await blob.arrayBuffer();
-        socket.emit("snapshot", { w, h, d: toB64(buf) });
+        socket.emit("snapshot", { w, h, t: blob.type, d: toB64(buf) });
       } catch (err) {
         /* se descarta el frame */
       } finally {
         captureBusy = false;
       }
-    }, "image/jpeg", QUALITY);
+    }, imgType, quality);
   }
 
   // ---- INVITADO: mostrar frames y mandar botones ------------------
@@ -318,7 +453,7 @@
     guestCanvas.width = 256; guestCanvas.height = 240;
     guestCanvas.style.cssText =
       "position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;" +
-      "object-position:center;pointer-events:none;z-index:2;background:#000;";
+      "object-position:center;pointer-events:none;z-index:2;background:#000;image-rendering:pixelated;";
     parent.appendChild(guestCanvas);
     guestCtx = guestCanvas.getContext("2d");
     // 3) los botones locales se envían al host en vez de al core local
@@ -361,7 +496,7 @@
       while (pendingFrame && role === "guest" && guestCtx) {
         const m = pendingFrame;
         pendingFrame = null;
-        const bmp = await createImageBitmap(new Blob([fromB64(m.d)], { type: "image/jpeg" }));
+        const bmp = await createImageBitmap(new Blob([fromB64(m.d)], { type: m.t || "image/jpeg" }));
         if (guestCanvas.width !== bmp.width) guestCanvas.width = bmp.width;
         if (guestCanvas.height !== bmp.height) guestCanvas.height = bmp.height;
         guestCtx.drawImage(bmp, 0, 0);
@@ -479,7 +614,6 @@
         ul.appendChild(el("div", null, (p.isHost ? "👑 " : "🎮 ") + (p.player_name || "Jugador")));
       }
       panel.appendChild(ul);
-      if (role === "guest") panel.appendChild(el("div", "color:#e0a;font-size:12px;margin-bottom:10px;", "Nota: por ahora el invitado no oye el audio."));
       const leave = el("button", BTN_CSS.replace("#5865F2", "#c0392b") + "width:100%;", "Salir de la sala");
       leave.addEventListener("click", () => leaveRoom("Saliste de la sala."));
       panel.appendChild(leave);

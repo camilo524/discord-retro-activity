@@ -3,7 +3,38 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Camulador</title>
+  <title>Camulador · Emulador de juegos retro en el navegador y en Discord</title>
+  <meta name="description" content="Camulador es un emulador de juegos retro (NES, arcade y PlayStation) que corre en el navegador, con controles táctiles, partidas guardadas y multijugador online. También funciona como Actividad de Discord." />
+  <meta name="robots" content="index, follow, max-image-preview:large" />
+  <meta name="theme-color" content="#0f0f1a" />
+  <link rel="canonical" href="https://retro.camiloh.co/" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Camulador" />
+  <meta property="og:title" content="Camulador · Emulador de juegos retro en el navegador y en Discord" />
+  <meta property="og:description" content="Juega clásicos NES, arcade y PlayStation desde el navegador o dentro de Discord, con controles táctiles, partidas guardadas y multijugador online." />
+  <meta property="og:url" content="https://retro.camiloh.co/" />
+  <meta property="og:image" content="https://retro.camiloh.co/covers/contra.webp" />
+  <meta property="og:locale" content="es_ES" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Camulador · Emulador de juegos retro" />
+  <meta name="twitter:description" content="Emulador retro en el navegador y en Discord, con controles táctiles y multijugador online." />
+  <meta name="twitter:image" content="https://retro.camiloh.co/covers/contra.webp" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "Camulador",
+    "url": "https://retro.camiloh.co/",
+    "description": "Emulador de juegos retro (NES, arcade y PlayStation) en el navegador y como Actividad de Discord, con controles táctiles, partidas guardadas y multijugador online.",
+    "applicationCategory": "GameApplication",
+    "operatingSystem": "Cualquier navegador moderno (escritorio y móvil)",
+    "inLanguage": "es",
+    "isAccessibleForFree": true,
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+    "codeRepository": "https://github.com/camilo524/discord-retro-activity",
+    "author": { "@type": "Person", "name": "Camilo Sandoval" }
+  }
+  </script>
   <!--
     Cuando Discord proxyea /retro → retro.camiloh.co, la página se ve en:
       https://APP.discordsays.com/retro/
@@ -17,6 +48,7 @@
       var inDiscord =
         /\.discordsays\.com$/i.test(host) ||
         /\.discordapigateway\.com$/i.test(host);
+      if (inDiscord) document.documentElement.classList.add("in-discord");
       if (inDiscord && path.indexOf("/retro") === 0) {
         var b = document.createElement("base");
         b.href = "/retro/";
@@ -24,16 +56,21 @@
       }
     })();
   </script>
-  <link rel="stylesheet" href="./css/styles.css?v=04" />
+  <link rel="stylesheet" href="./css/styles.css?v=05" />
   <link rel="icon" type="image/png" href="./assets/favicon.png" />
 </head>
 <body>
   <div id="menu">
+    <a class="gh-link" href="https://github.com/camilo524/discord-retro-activity" target="_blank" rel="noopener noreferrer" title="Código en GitHub" aria-label="Ver el código en GitHub">
+      <svg viewBox="0 0 16 16" width="20" height="20" aria-hidden="true" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+    </a>
     <div class="menu-inner">
       <h1>🕹️ CAMULADOR</h1>
       <p class="subtitle">Elige un juego · Controles en (☰)</p>
       <p class="music-credit">🎵 Música: <strong>4RM0R</strong></p>
       <div class="games-grid" id="games-grid"></div>
+      <!-- Texto para buscadores y lectores (el menú real lo dibuja js/emulator.js) -->
+      <noscript><p>Camulador es un emulador retro que corre en el navegador. Juegos incluidos: Contra, Metal Slug 3, Super Mario Bros, King of Fighters 98, Teenage Mutant Ninja Turtles, Donkey Kong, Ice Climber, Road Fighter, Bloody Roar y Silent Hill. Requiere JavaScript.</p></noscript>
     </div>
   </div>
 
@@ -54,13 +91,13 @@
     <div id="game"></div>
   </div>
 
-  <script src="./js/games.js?v=08"></script>
+  <script src="./js/games.js?v=09"></script>
   <script src="./js/save-states.js?v=2"></script>
   <script src="./js/rom-cache.js?v=3"></script>
-  <script src="./js/netplay.js?v=8"></script>
-  <script src="./js/netplay-ws.js?v=2"></script>
+  <script src="./js/netplay.js?v=9"></script>
+  <script src="./js/netplay-ws.js?v=3"></script>
   <script src="./js/menu-music.js?v=2"></script>
-  <script src="./js/emulator.js?v=13"></script>
+  <script src="./js/emulator.js?v=14"></script>
   <!-- SDK: NO usar bare specifier @discord/... (rompe sin bundler) -->
   <script type="module" src="./app.js?v=03"></script>
 </body>
