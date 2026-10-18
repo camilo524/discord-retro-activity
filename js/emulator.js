@@ -86,7 +86,7 @@
   //  VOLVER AL MENÚ (SIN RELOAD — importante en móvil)
   // =============================================
   function backToMenu() {
-    if (window.NetplayWS) window.NetplayWS.onGameExit(); // salir de la sala antes de cerrar el emulador
+    try { if (window.NetplayWS) window.NetplayWS.onGameExit(); } catch (err) { console.warn("NetplayWS.onGameExit:", err); } // salir de la sala antes de cerrar el emulador
     if (loadTimeout) {
       clearTimeout(loadTimeout);
       loadTimeout = null;
@@ -414,7 +414,8 @@
       }
 
       window.EJS_biosUrl = fetchableBios;
-      window.EJS_pathtodata = EJS_BASE;
+      // Absoluta: el loader se ejecuta desde un blob: y ahí las rutas relativas no resuelven.
+      window.EJS_pathtodata = new URL(EJS_BASE, location.href).href;
       window.EJS_startOnLoaded = true;
       window.EJS_color = "#000000";
       window.EJS_gameID = game.id;
@@ -466,7 +467,7 @@
         loading.style.display = "none";
         btnBack.style.display = "block";
         console.log("✅ Juego iniciado:", game.name);
-        if (window.NetplayWS) window.NetplayWS.onGameStart(game);
+        try { if (window.NetplayWS) window.NetplayWS.onGameStart(game); } catch (err) { console.warn("NetplayWS.onGameStart:", err); }
         setTimeout(fixControlPositions, 400);
         setTimeout(fixControlPositions, 1200);
       };
@@ -475,20 +476,42 @@
       progressBar.style.width = "65%";
       await sleep(50);
 
-      const script = document.createElement("script");
-      script.src = `${EJS_BASE}loader.js?v=${VERSION}`;
-      script.setAttribute("data-ejs", "1");
-      script.onload = function () {
+      // El loader.js de 4.3.0-pre declara const/let en el ámbito global, así que
+      // inyectarlo una segunda vez (al cambiar de juego) lanza
+      // "Identifier 'folderPath' has already been declared" y el juego se queda
+      // cargando. Solución: descargarlo y ejecutarlo envuelto en una función.
+      const loaderUrl = `${window.EJS_pathtodata}loader.js?v=${VERSION}`;
+      const onLoaderLoaded = function () {
         window.__ejsLoaded = true;
         setStatus("Núcleo cargado", "Arrancando " + game.name + "...");
         progressBar.style.width = "85%";
       };
-      script.onerror = function () {
+      const onLoaderError = function () {
         showError(
           "No se pudo cargar EmulatorJS",
           "Revisa el URL Mapping de /emulatorjs"
         );
       };
+      let wrappedUrl = null;
+      try {
+        const res = await fetch(loaderUrl);
+        if (!res.ok) throw new Error("loader.js HTTP " + res.status);
+        const src = await res.text();
+        const blob = new Blob(["(function(){\n" + src + "\n})();\n//# sourceURL=" + loaderUrl], {
+          type: "text/javascript",
+        });
+        wrappedUrl = URL.createObjectURL(blob);
+      } catch (err) {
+        console.warn("No se pudo envolver loader.js, se carga de forma directa:", err);
+      }
+      const script = document.createElement("script");
+      script.src = wrappedUrl || loaderUrl;
+      script.setAttribute("data-ejs", "1");
+      script.onload = function () {
+        if (wrappedUrl) URL.revokeObjectURL(wrappedUrl);
+        onLoaderLoaded();
+      };
+      script.onerror = onLoaderError;
       document.body.appendChild(script);
     } catch (err) {
       console.error(err);
@@ -511,15 +534,40 @@
 
     const rightPad = document.querySelector(".ejs_virtualGamepad_right");
     if (rightPad) {
-      rightPad.style.bottom = "55px";
+      rightPad.style.bottom = "12px";
       rightPad.style.right = "88px";
     }
 
     const leftPad = document.querySelector(".ejs_virtualGamepad_left");
     if (leftPad) {
-      leftPad.style.bottom = "55px";
+      leftPad.style.bottom = "12px";
       leftPad.style.left = "12px";
     }
+    syncJoystickPosition();
+  }
+
+  // nipplejs (la palanca) calcula su centro una sola vez al crearse y solo lo
+  // recalcula con el evento "resize". Si el panel se mueve sin resize (como
+  // hace fixControlPositions) el centro queda desfasado y la palanca deja de
+  // responder bien. Se vigila la posición y se avisa con un "resize" solo
+  // cuando cambia.
+  let joystickWatch = null;
+  function syncJoystickPosition() {
+    if (joystickWatch) return;
+    let last = "";
+    joystickWatch = setInterval(() => {
+      const pad = document.querySelector(".ejs_virtualGamepad_left");
+      if (!pad) {
+        if (!document.querySelector("#game canvas")) { clearInterval(joystickWatch); joystickWatch = null; }
+        return;
+      }
+      const r = pad.getBoundingClientRect();
+      const sig = [r.left, r.top, r.width, r.height].map(Math.round).join(",");
+      if (sig !== last) {
+        last = sig;
+        window.dispatchEvent(new Event("resize"));
+      }
+    }, 500);
   }
 
   window.startGame = startGame;

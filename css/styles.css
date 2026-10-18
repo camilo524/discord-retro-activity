@@ -221,12 +221,12 @@ html, body {
 }
 
 .ejs_virtualGamepad_right {
-  bottom: 55px !important;
+  bottom: 12px !important;
   right: 88px !important;
 }
 
 .ejs_virtualGamepad_left {
-  bottom: 50px !important;
+  bottom: 12px !important;
   left: 12px !important;
 }
 
@@ -235,11 +235,21 @@ html, body {
 }
 
 
-/* Palanca virtual (nipplejs): color neutro en lugar del rojo por defecto */
+/* Palanca virtual (nipplejs): visible y neutra. nipplejs aplica opacidad
+   .5 al contenedor Y a cada pieza, así que se fuerza a 1 y el color se
+   controla solo con el rgba. */
+.ejs_virtualGamepad_parent .nipple {
+  opacity: 1 !important;
+}
 .ejs_virtualGamepad_parent .nipple .back {
-  background: rgba(255, 255, 255, 0.16) !important;
-  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.22) !important;
+  border: 2px solid rgba(255, 255, 255, 0.55);
+  box-sizing: border-box;
+  opacity: 1 !important;
 }
 .ejs_virtualGamepad_parent .nipple .front {
-  background: rgba(255, 255, 255, 0.55) !important;
+  background: rgba(255, 255, 255, 0.75) !important;
+  border: 2px solid rgba(255, 255, 255, 0.95);
+  box-sizing: border-box;
+  opacity: 1 !important;
 }
