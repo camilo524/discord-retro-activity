@@ -71,6 +71,40 @@
     }
   }
 
+  // ---- Diagnóstico WebRTC --------------------------------------
+  // Registra en la consola ([RTC]) el estado de ICE y los tipos de
+  // candidatos (host / srflx / relay) para ver por qué una conexión
+  // falla (p. ej. dentro de Discord). No cambia el comportamiento.
+  (function installRtcDiagnostics() {
+    const Native = window.RTCPeerConnection;
+    if (typeof Native !== "function" || Native.__camuladorDiag) return;
+    const log = (...a) => console.log("[RTC]", ...a);
+    function Wrapped(cfg, ...rest) {
+      const pc = new Native(cfg, ...rest);
+      const id = Math.random().toString(36).slice(2, 6);
+      try {
+        const servers = ((cfg && cfg.iceServers) || []).map((s) => [].concat(s.urls).join(","));
+        log(id, "nueva conexión; iceServers:", servers.join(" | ") || "(ninguno)");
+      } catch (e) {}
+      const seen = {};
+      pc.addEventListener("icecandidate", (e) => {
+        if (!e.candidate) { log(id, "candidatos recolectados:", JSON.stringify(seen)); return; }
+        const t = e.candidate.type || (/ typ (\w+)/.exec(e.candidate.candidate) || [])[1] || "?";
+        seen[t] = (seen[t] || 0) + 1;
+      });
+      pc.addEventListener("icecandidateerror", (e) => log(id, "icecandidateerror", e.errorCode, e.errorText, e.url));
+      pc.addEventListener("iceconnectionstatechange", () => log(id, "ice:", pc.iceConnectionState));
+      pc.addEventListener("connectionstatechange", () => log(id, "conexión:", pc.connectionState));
+      pc.addEventListener("track", (e) => log(id, "track recibido:", e.track && e.track.kind));
+      return pc;
+    }
+    Wrapped.prototype = Native.prototype;
+    Object.setPrototypeOf(Wrapped, Native);
+    Wrapped.__camuladorDiag = true;
+    window.RTCPeerConnection = Wrapped;
+    log("RTCPeerConnection disponible; entorno:", inDiscord ? "Discord" : "web");
+  })();
+
   const NETPLAY_ICE_SERVERS = [
     { urls: "stun:stun.l.google.com:19302" },
     { urls: "stun:stun1.l.google.com:19302" },
