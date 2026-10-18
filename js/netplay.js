@@ -72,38 +72,68 @@
   }
 
   // ---- Diagnóstico WebRTC --------------------------------------
-  // Registra en la consola ([RTC]) el estado de ICE y los tipos de
-  // candidatos (host / srflx / relay) para ver por qué una conexión
-  // falla (p. ej. dentro de Discord). No cambia el comportamiento.
-  (function installRtcDiagnostics() {
+  // Escribe en la consola ([RTC]) y en un recuadro en pantalla el estado
+  // de ICE y los tipos de candidatos (host / srflx / relay), para ver por
+  // qué una conexión falla (p. ej. dentro de Discord). Toca el recuadro
+  // para ocultarlo. No cambia el comportamiento del netplay.
+  const rtcLines = [];
+  let rtcBox = null;
+  function rtcLog(...a) {
+    const line = new Date().toLocaleTimeString() + " " + a.join(" ");
+    console.log("[RTC]", ...a);
+    rtcLines.push(line);
+    if (rtcLines.length > 14) rtcLines.shift();
+    try {
+      if (!document.body) return;
+      if (!rtcBox) {
+        rtcBox = document.createElement("div");
+        rtcBox.style.cssText =
+          "position:fixed;right:6px;bottom:6px;z-index:2147483647;max-width:92vw;" +
+          "background:rgba(0,0,0,.82);color:#7CFC9A;font:11px/1.35 monospace;" +
+          "padding:6px 8px;border-radius:6px;white-space:pre-wrap;word-break:break-all;";
+        rtcBox.addEventListener("click", () => { rtcBox.style.display = "none"; });
+        document.body.appendChild(rtcBox);
+      }
+      rtcBox.style.display = "block";
+      rtcBox.textContent = "[RTC] (toca para ocultar)\n" + rtcLines.join("\n");
+    } catch (e) {}
+  }
+
+  function installRtcDiagnostics() {
     const Native = window.RTCPeerConnection;
-    if (typeof Native !== "function" || Native.__camuladorDiag) return;
-    const log = (...a) => console.log("[RTC]", ...a);
+    if (typeof Native !== "function") {
+      rtcLog("RTCPeerConnection NO disponible en este entorno (" + (inDiscord ? "Discord" : "web") + ")");
+      return;
+    }
+    if (Native.__camuladorDiag) return;
     function Wrapped(cfg, ...rest) {
       const pc = new Native(cfg, ...rest);
       const id = Math.random().toString(36).slice(2, 6);
       try {
-        const servers = ((cfg && cfg.iceServers) || []).map((s) => [].concat(s.urls).join(","));
-        log(id, "nueva conexión; iceServers:", servers.join(" | ") || "(ninguno)");
+        const servers = ((cfg && cfg.iceServers) || []).map((x) => [].concat(x.urls).join(","));
+        rtcLog(id, "nueva conexión; iceServers:", servers.join(" | ") || "(ninguno)");
       } catch (e) {}
       const seen = {};
       pc.addEventListener("icecandidate", (e) => {
-        if (!e.candidate) { log(id, "candidatos recolectados:", JSON.stringify(seen)); return; }
+        if (!e.candidate) { rtcLog(id, "candidatos:", JSON.stringify(seen)); return; }
         const t = e.candidate.type || (/ typ (\w+)/.exec(e.candidate.candidate) || [])[1] || "?";
         seen[t] = (seen[t] || 0) + 1;
       });
-      pc.addEventListener("icecandidateerror", (e) => log(id, "icecandidateerror", e.errorCode, e.errorText, e.url));
-      pc.addEventListener("iceconnectionstatechange", () => log(id, "ice:", pc.iceConnectionState));
-      pc.addEventListener("connectionstatechange", () => log(id, "conexión:", pc.connectionState));
-      pc.addEventListener("track", (e) => log(id, "track recibido:", e.track && e.track.kind));
+      pc.addEventListener("icecandidateerror", (e) => rtcLog(id, "icecandidateerror", e.errorCode, e.errorText, e.url));
+      pc.addEventListener("iceconnectionstatechange", () => rtcLog(id, "ice:", pc.iceConnectionState));
+      pc.addEventListener("connectionstatechange", () => rtcLog(id, "conexión:", pc.connectionState));
+      pc.addEventListener("track", (e) => rtcLog(id, "track recibido:", e.track && e.track.kind));
       return pc;
     }
     Wrapped.prototype = Native.prototype;
     Object.setPrototypeOf(Wrapped, Native);
     Wrapped.__camuladorDiag = true;
     window.RTCPeerConnection = Wrapped;
-    log("RTCPeerConnection disponible; entorno:", inDiscord ? "Discord" : "web");
-  })();
+    rtcLog("RTCPeerConnection disponible; entorno:", inDiscord ? "Discord" : "web");
+  }
+  // Esperar a que exista <body> para poder mostrar el recuadro.
+  if (document.body) installRtcDiagnostics();
+  else document.addEventListener("DOMContentLoaded", installRtcDiagnostics);
 
   const NETPLAY_ICE_SERVERS = [
     { urls: "stun:stun.l.google.com:19302" },
