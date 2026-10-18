@@ -388,18 +388,43 @@
 
   function ensureUI() {
     if (btn) return;
-    btn = el("button", "position:fixed;top:8px;right:8px;z-index:9998;display:none;" +
-      "width:46px;height:46px;border-radius:50%;border:0;background:#5865F2;color:#fff;" +
-      "font-size:22px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.5);", "🌐");
+    // Arriba a la IZQUIERDA, pegado al botón "Cambiar juego" (ver placeUI).
+    // El borde derecho se evita a propósito: en Discord móvil esa franja
+    // la ocupan los botones de Discord (salir, avatar, etc.) y no se puede tocar.
+    btn = el("button", "position:fixed;top:12px;left:190px;z-index:9998;display:none;" +
+      "min-width:44px;height:40px;border-radius:10px;border:0;background:rgba(88,101,242,.95);color:#fff;" +
+      "font-size:20px;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.45);", "🌐");
     btn.title = "Multijugador";
-    btn.addEventListener("click", () => { panel.style.display = panel.style.display === "none" ? "block" : "none"; if (panel.style.display === "block") { renderPanel(); refreshList(); } });
+    btn.addEventListener("click", () => {
+      placeUI();
+      panel.style.display = panel.style.display === "none" ? "block" : "none";
+      if (panel.style.display === "block") { renderPanel(); refreshList(); }
+    });
     document.body.appendChild(btn);
 
-    panel = el("div", "position:fixed;top:60px;right:8px;z-index:9999;display:none;width:min(340px,calc(100vw - 16px));" +
+    panel = el("div", "position:fixed;top:60px;left:12px;z-index:9999;display:none;width:min(340px,calc(100vw - 24px));" +
       "max-height:calc(100vh - 76px);overflow:auto;background:#17181c;color:#fff;border:1px solid #333;" +
       "border-radius:12px;padding:14px;font:14px system-ui,sans-serif;box-shadow:0 8px 28px rgba(0,0,0,.6);");
     document.body.appendChild(panel);
+    window.addEventListener("resize", placeUI);
     renderPanel();
+  }
+
+  // Coloca el botón justo a la derecha de "Cambiar juego" y el panel debajo.
+  function placeUI() {
+    if (!btn || !panel) return;
+    const back = document.getElementById("btn-back");
+    const r = back && back.getBoundingClientRect();
+    const hasBack = r && r.width > 0;
+    const top = hasBack ? Math.round(r.top) : 12;
+    const h = hasBack ? Math.round(r.height) : 40;
+    const left = hasBack ? Math.round(r.right + 8) : 190;
+    btn.style.top = top + "px";
+    btn.style.left = left + "px";
+    btn.style.height = h + "px";
+    const pTop = top + h + 8;
+    panel.style.top = pTop + "px";
+    panel.style.maxHeight = "calc(100vh - " + (pTop + 12) + "px)";
   }
 
   let statusEl = null;
@@ -494,6 +519,7 @@
       game = g;
       ensureUI();
       btn.style.display = "block";
+      placeUI();
       if (!listTimer) listTimer = setInterval(() => { if (panel && panel.style.display === "block") refreshList(); }, 3000);
     },
     onGameExit() {

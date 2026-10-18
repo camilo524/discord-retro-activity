@@ -421,10 +421,18 @@
       window.EJS_gameName = game.name;
 
       // Controles por juego
-      const layout =
-        typeof CONTROL_LAYOUTS !== "undefined"
-          ? CONTROL_LAYOUTS[game.controls] || CONTROL_LAYOUTS.default
-          : null;
+      const controlsMode =
+        new URLSearchParams(location.search).get("controls") ||
+        (typeof CONTROLS_MODE !== "undefined" ? CONTROLS_MODE : "custom");
+      let layout = null;
+      if (controlsMode === "custom") {
+        layout =
+          typeof CONTROL_LAYOUTS !== "undefined"
+            ? CONTROL_LAYOUTS[game.controls] || CONTROL_LAYOUTS.default
+            : null;
+      } else if (controlsMode === "stick" && game.core === "nes" && typeof NES_STICK_LAYOUT !== "undefined") {
+        layout = NES_STICK_LAYOUT;
+      } // "default": sin layout propio, EmulatorJS usa el suyo
 
       if (layout) {
         window.EJS_VirtualGamepadSettings = layout;

@@ -233,3 +233,13 @@ html, body {
 .ejs_virtualGamepad_bottom {
   bottom: 10px !important;
 }
+
+
+/* Palanca virtual (nipplejs): color neutro en lugar del rojo por defecto */
+.ejs_virtualGamepad_parent .nipple .back {
+  background: rgba(255, 255, 255, 0.16) !important;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+.ejs_virtualGamepad_parent .nipple .front {
+  background: rgba(255, 255, 255, 0.55) !important;
+}
