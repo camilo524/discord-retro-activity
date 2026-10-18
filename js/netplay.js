@@ -36,6 +36,14 @@
     return inDiscord ? location.origin + "/netplay" : NETPLAY_SERVER;
   }
 
+  // Discord no soporta WebRTC (lo dice su documentación), así que allí el
+  // netplay nativo de EmulatorJS no puede funcionar. En ese caso se usa el
+  // modo por WebSocket de js/netplay-ws.js. También se puede probar en la
+  // web añadiendo ?netplay=ws a la URL.
+  const forcedWs = new URLSearchParams(location.search).get("netplay") === "ws";
+  const wsMode = inDiscord || forcedWs || typeof window.RTCPeerConnection !== "function";
+  window.NETPLAY_WS = { enabled: wsMode, url: netplayUrl() };
+
   function wrapIo(realIo) {
     if (typeof realIo !== "function" || realIo.__camuladorWrapped) return realIo;
     function io(uri, opts) {
@@ -72,31 +80,11 @@
   }
 
   // ---- Diagnóstico WebRTC --------------------------------------
-  // Escribe en la consola ([RTC]) y en un recuadro en pantalla el estado
-  // de ICE y los tipos de candidatos (host / srflx / relay), para ver por
-  // qué una conexión falla (p. ej. dentro de Discord). Toca el recuadro
-  // para ocultarlo. No cambia el comportamiento del netplay.
-  const rtcLines = [];
-  let rtcBox = null;
+  // Escribe en la consola ([RTC]) el estado de ICE y los tipos de
+  // candidatos (host / srflx / relay), para depurar conexiones WebRTC.
+  // No cambia el comportamiento del netplay.
   function rtcLog(...a) {
-    const line = new Date().toLocaleTimeString() + " " + a.join(" ");
     console.log("[RTC]", ...a);
-    rtcLines.push(line);
-    if (rtcLines.length > 14) rtcLines.shift();
-    try {
-      if (!document.body) return;
-      if (!rtcBox) {
-        rtcBox = document.createElement("div");
-        rtcBox.style.cssText =
-          "position:fixed;right:6px;bottom:6px;z-index:2147483647;max-width:92vw;" +
-          "background:rgba(0,0,0,.82);color:#7CFC9A;font:11px/1.35 monospace;" +
-          "padding:6px 8px;border-radius:6px;white-space:pre-wrap;word-break:break-all;";
-        rtcBox.addEventListener("click", () => { rtcBox.style.display = "none"; });
-        document.body.appendChild(rtcBox);
-      }
-      rtcBox.style.display = "block";
-      rtcBox.textContent = "[RTC] (toca para ocultar)\n" + rtcLines.join("\n");
-    } catch (e) {}
   }
 
   function installRtcDiagnostics() {
@@ -131,9 +119,7 @@
     window.RTCPeerConnection = Wrapped;
     rtcLog("RTCPeerConnection disponible; entorno:", inDiscord ? "Discord" : "web");
   }
-  // Esperar a que exista <body> para poder mostrar el recuadro.
-  if (document.body) installRtcDiagnostics();
-  else document.addEventListener("DOMContentLoaded", installRtcDiagnostics);
+  installRtcDiagnostics();
 
   const NETPLAY_ICE_SERVERS = [
     { urls: "stun:stun.l.google.com:19302" },
@@ -144,8 +130,12 @@
   // loader.js de EmulatorJS, para que las variables EJS_* ya estén
   // listas cuando el core arranque.
   function applyNetplayConfig(game) {
-    window.EJS_netplayServer = netplayUrl();
-    window.EJS_netplayICEServers = NETPLAY_ICE_SERVERS;
+    if (wsMode) {
+      delete window.EJS_netplayServer; // sin servidor => EmulatorJS no muestra su botón
+    } else {
+      window.EJS_netplayServer = netplayUrl();
+      window.EJS_netplayICEServers = NETPLAY_ICE_SERVERS;
+    }
 
     if (window.discordUser && window.discordUser.username) {
       window.EJS_playerName = window.discordUser.username;

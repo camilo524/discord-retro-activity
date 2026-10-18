@@ -86,6 +86,7 @@
   //  VOLVER AL MENÚ (SIN RELOAD — importante en móvil)
   // =============================================
   function backToMenu() {
+    if (window.NetplayWS) window.NetplayWS.onGameExit(); // salir de la sala antes de cerrar el emulador
     if (loadTimeout) {
       clearTimeout(loadTimeout);
       loadTimeout = null;
@@ -457,6 +458,7 @@
         loading.style.display = "none";
         btnBack.style.display = "block";
         console.log("✅ Juego iniciado:", game.name);
+        if (window.NetplayWS) window.NetplayWS.onGameStart(game);
         setTimeout(fixControlPositions, 400);
         setTimeout(fixControlPositions, 1200);
       };
