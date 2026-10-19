@@ -67,12 +67,17 @@
   let pendingFrame = null;
   let savedSim = null;       // { hadOwn, fn }
   let savedCanvasVis = "";
+  let frameAR = 4 / 3;       // proporción del último frame recibido
   let actx = null;           // AudioContext del invitado
   let audioNext = 0;
 
   // UI
   let btn = null;
   let panel = null;
+  let badge = null;          // contador de mensajes sin leer sobre el botón 🌐
+  let chatLog = [];          // { n, t, me }
+  let chatBox = null;
+  let unread = 0;
 
   // ---- Utilidades ------------------------------------------------
   function guid() {
@@ -200,6 +205,7 @@
     stopHosting();
     stopGuest();
     closeGuestAudio();
+    chatLog = []; unread = 0; updateBadge();
     if (socket && socket.connected && role) {
       try { socket.emit("leave-room"); } catch (e) {}
     }
@@ -238,6 +244,8 @@
     if (!d) return;
     if (d.type === "audio") {
       if (role === "guest") playAudio(d);
+    } else if (d.type === "chat") {
+      if (role) addChat(String(d.n || "Jugador").slice(0, 20), String(d.t || "").slice(0, 200), false);
     } else if (d.type === "slots" && role === "guest") {
       slotOf = d.slots || {};
       mySlot = slotOf[userId] != null ? slotOf[userId] : null;
@@ -289,6 +297,18 @@
     if (capVideo) { try { capVideo.srcObject = null; } catch (e) {} capVideo = null; }
     capCanvas = null; capCtx = null; captureBusy = false; lastSig = null;
     stopAudioTap();
+  }
+
+  // Proporción con la que el host ve el juego (algunos cores usan píxeles no cuadrados).
+  // Solo se usa si el canvas visible parece ajustado a la imagen; si no, el invitado usa la del frame.
+  function hostAR(e) {
+    try {
+      const r = e.canvas.getBoundingClientRect();
+      const ar = r.width / r.height;
+      const fr = e.canvas.width / e.canvas.height;
+      if (r.height > 0 && ar > 1.2 && ar < 1.9 && Math.abs(ar - fr) / fr < 0.25) return Math.round(ar * 1000) / 1000;
+    } catch (err) {}
+    return null;
   }
 
   // Firma barata del frame (miniatura 32x24) para no reenviar imágenes idénticas.
@@ -431,7 +451,7 @@
         if (imgType === "image/webp" && blob.type !== "image/webp") { imgType = "image/jpeg"; return; } // Safari: sin WebP
         lastSig = sig;
         const buf = await blob.arrayBuffer();
-        socket.emit("snapshot", { w, h, t: blob.type, d: toB64(buf) });
+        socket.emit("snapshot", { w, h, a: hostAR(e), t: blob.type, d: toB64(buf) });
       } catch (err) {
         /* se descarta el frame */
       } finally {
@@ -451,10 +471,13 @@
     const parent = (e.elements && e.elements.parent) || document.getElementById("game");
     guestCanvas = document.createElement("canvas");
     guestCanvas.width = 256; guestCanvas.height = 240;
+    // Se ajusta por JS al tamaño de la ventana (position:fixed): no depende del
+    // layout del contenedor de EmulatorJS, que recortaba la imagen.
     guestCanvas.style.cssText =
-      "position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;" +
-      "object-position:center;pointer-events:none;z-index:2;background:#000;image-rendering:pixelated;";
+      "position:fixed;pointer-events:none;z-index:2;background:#000;image-rendering:pixelated;";
     parent.appendChild(guestCanvas);
+    fitGuestCanvas();
+    window.addEventListener("resize", fitGuestCanvas);
     guestCtx = guestCanvas.getContext("2d");
     // 3) los botones locales se envían al host en vez de al core local
     const gm = e.gameManager;
@@ -468,7 +491,19 @@
     }
   }
 
+  function fitGuestCanvas() {
+    if (!guestCanvas) return;
+    const vw = window.innerWidth, vh = window.innerHeight;
+    let w = vw, h = vw / frameAR;
+    if (h > vh) { h = vh; w = vh * frameAR; }
+    guestCanvas.style.width = Math.floor(w) + "px";
+    guestCanvas.style.height = Math.floor(h) + "px";
+    guestCanvas.style.left = Math.floor((vw - w) / 2) + "px";
+    guestCanvas.style.top = Math.floor((vh - h) / 2) + "px";
+  }
+
   function stopGuest() {
+    window.removeEventListener("resize", fitGuestCanvas);
     const e = emu();
     if (guestCanvas && guestCanvas.parentNode) guestCanvas.parentNode.removeChild(guestCanvas);
     guestCanvas = null; guestCtx = null; pendingFrame = null; decoding = false;
@@ -499,6 +534,8 @@
         const bmp = await createImageBitmap(new Blob([fromB64(m.d)], { type: m.t || "image/jpeg" }));
         if (guestCanvas.width !== bmp.width) guestCanvas.width = bmp.width;
         if (guestCanvas.height !== bmp.height) guestCanvas.height = bmp.height;
+        const ar = m.a || bmp.width / bmp.height;
+        if (Math.abs(ar - frameAR) > 0.01) { frameAR = ar; fitGuestCanvas(); }
         guestCtx.drawImage(bmp, 0, 0);
         if (bmp.close) bmp.close();
       }
@@ -507,6 +544,71 @@
     } finally {
       decoding = false;
     }
+  }
+
+  // ---- Chat ------------------------------------------------------
+  function addChat(n, t, me) {
+    if (!t) return;
+    chatLog.push({ n, t, me });
+    if (chatLog.length > 50) chatLog.shift();
+    if (chatBox) drawChat();
+    if (!me && (!panel || panel.style.display === "none")) { unread++; updateBadge(); }
+  }
+
+  function sendChat(text) {
+    text = text.trim().slice(0, 200);
+    if (!text || !role || !socket || !socket.connected) return;
+    const me = players[userId];
+    const n = (me && me.player_name) || playerName();
+    try { socket.emit("data-message", { type: "chat", n, t: text }); } catch (e) {}
+    addChat(n, text, true);
+  }
+
+  function drawChat() {
+    if (!chatBox) return;
+    chatBox.textContent = "";
+    if (!chatLog.length) chatBox.appendChild(el("div", "color:rgba(255,255,255,.45);", "Sin mensajes todavía."));
+    for (const m of chatLog) {
+      const row = el("div", "margin-bottom:3px;word-break:break-word;");
+      row.appendChild(el("b", "color:" + (m.me ? "#9db4ff" : "#fff") + ";", m.n + ": "));
+      row.appendChild(el("span", "color:rgba(255,255,255,.88);", m.t));
+      chatBox.appendChild(row);
+    }
+    chatBox.scrollTop = chatBox.scrollHeight;
+  }
+
+  function updateBadge() {
+    if (!badge) return;
+    badge.style.display = unread > 0 ? "block" : "none";
+    badge.textContent = unread > 9 ? "9+" : String(unread);
+  }
+
+  // Reiniciar el juego desde cero (borra también la partida guardada, que si no
+  // se restauraría sola al volver a entrar).
+  async function restartGame() {
+    const e = emu();
+    if (role === "guest" || !game) return;
+    try { if (window.SaveStates) await window.SaveStates.remove(game.id); } catch (err) {}
+    try { if (e && e.gameManager && e.gameManager.restart) e.gameManager.restart(); } catch (err) {}
+    setStatus("Juego reiniciado desde cero.");
+  }
+
+  // Botón de reinicio con doble toque (confirm() puede estar bloqueado dentro de Discord).
+  function restartButton(extraCss, closePanel) {
+    const label = "🔄 Reiniciar juego (borra el guardado)";
+    const b = el("button", BTN_CSS + "width:100%;" + extraCss, label);
+    let armed = null;
+    b.addEventListener("click", async () => {
+      if (!armed) {
+        b.textContent = "¿Seguro? Toca otra vez para confirmar";
+        armed = setTimeout(() => { armed = null; b.textContent = label; }, 3000);
+        return;
+      }
+      clearTimeout(armed); armed = null; b.textContent = label;
+      await restartGame();
+      if (closePanel && panel) panel.style.display = "none";
+    });
+    return b;
   }
 
   // ---- UI --------------------------------------------------------
@@ -518,7 +620,7 @@
   }
 
   const BTN_CSS =
-    "background:#5865F2;color:#fff;border:0;border-radius:8px;padding:10px 14px;" +
+    "background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.25);border-radius:8px;padding:9px 12px;" +
     "font:600 14px system-ui,sans-serif;cursor:pointer;min-height:40px;";
 
   function ensureUI() {
@@ -527,19 +629,26 @@
     // El borde derecho se evita a propósito: en Discord móvil esa franja
     // la ocupan los botones de Discord (salir, avatar, etc.) y no se puede tocar.
     btn = el("button", "position:fixed;top:12px;left:190px;z-index:9998;display:none;" +
-      "min-width:44px;height:40px;border-radius:10px;border:0;background:rgba(88,101,242,.95);color:#fff;" +
-      "font-size:20px;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.45);", "🌐");
+      "min-width:44px;height:40px;border-radius:10px;border:1px solid rgba(255,255,255,.25);" +
+      "background:rgba(0,0,0,.45);color:#fff;font-size:18px;cursor:pointer;" +
+      "-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);");
+    btn.appendChild(el("span", "filter:grayscale(1) brightness(2);", "🌐"));
     btn.title = "Multijugador";
     btn.addEventListener("click", () => {
       placeUI();
       panel.style.display = panel.style.display === "none" ? "block" : "none";
-      if (panel.style.display === "block") { renderPanel(); refreshList(); }
+      if (panel.style.display === "block") { unread = 0; updateBadge(); renderPanel(); refreshList(); }
     });
+    badge = el("span", "position:absolute;top:-6px;right:-6px;min-width:18px;height:18px;padding:0 4px;" +
+      "border-radius:9px;background:#e53935;color:#fff;font:700 11px/18px system-ui,sans-serif;" +
+      "text-align:center;display:none;filter:none;");
+    btn.appendChild(badge);
     document.body.appendChild(btn);
 
-    panel = el("div", "position:fixed;top:60px;left:12px;z-index:9999;display:none;width:min(340px,calc(100vw - 24px));" +
-      "max-height:calc(100vh - 76px);overflow:auto;background:#17181c;color:#fff;border:1px solid #333;" +
-      "border-radius:12px;padding:14px;font:14px system-ui,sans-serif;box-shadow:0 8px 28px rgba(0,0,0,.6);");
+    panel = el("div", "position:fixed;top:60px;left:12px;z-index:9999;display:none;width:min(300px,calc(100vw - 24px));" +
+      "max-height:calc(100vh - 76px);overflow:auto;background:rgba(0,0,0,.6);color:#fff;" +
+      "border:1px solid rgba(255,255,255,.2);border-radius:12px;padding:12px;font:13px system-ui,sans-serif;" +
+      "-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);");
     document.body.appendChild(panel);
     window.addEventListener("resize", placeUI);
     renderPanel();
@@ -571,6 +680,7 @@
   function renderPanel() {
     if (!panel) return;
     panel.textContent = "";
+    chatBox = null;
     const head = el("div", "display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;");
     head.appendChild(el("b", "font-size:16px;", "🌐 Multijugador"));
     const x = el("button", "background:none;border:0;color:#aaa;font-size:20px;cursor:pointer;", "✕");
@@ -582,22 +692,24 @@
     panel.appendChild(statusEl);
 
     if (!role) {
-      const nm = el("input", "width:100%;box-sizing:border-box;padding:9px;border-radius:8px;border:1px solid #444;background:#0f1013;color:#fff;margin-bottom:8px;");
+      const nm = el("input", "width:100%;box-sizing:border-box;padding:9px;border-radius:8px;border:1px solid rgba(255,255,255,.25);background:rgba(0,0,0,.4);color:#fff;margin-bottom:8px;");
       nm.id = "npws-name";
       nm.placeholder = "Tu nombre";
       nm.value = (window.discordUser && window.discordUser.username) || "";
       panel.appendChild(nm);
 
       const row = el("div", "display:flex;gap:6px;margin-bottom:12px;");
-      const rn = el("input", "flex:1;min-width:0;padding:9px;border-radius:8px;border:1px solid #444;background:#0f1013;color:#fff;");
+      const rn = el("input", "flex:1;min-width:0;padding:9px;border-radius:8px;border:1px solid rgba(255,255,255,.25);background:rgba(0,0,0,.4);color:#fff;");
       rn.placeholder = "Nombre de la sala";
-      const mp = el("select", "padding:9px;border-radius:8px;border:1px solid #444;background:#0f1013;color:#fff;");
+      const mp = el("select", "padding:9px;border-radius:8px;border:1px solid rgba(255,255,255,.25);background:rgba(0,0,0,.4);color:#fff;");
       for (let n = 2; n <= MAX_PLAYERS; n++) { const o = el("option", null, n + " jug."); o.value = n; mp.appendChild(o); }
       row.appendChild(rn); row.appendChild(mp);
       panel.appendChild(row);
       const create = el("button", BTN_CSS + "width:100%;margin-bottom:14px;", "Crear sala");
       create.addEventListener("click", () => createRoom(rn.value.trim(), parseInt(mp.value, 10)));
       panel.appendChild(create);
+
+      panel.appendChild(restartButton("margin-bottom:14px;", true));
 
       panel.appendChild(el("div", "font-weight:600;margin-bottom:6px;", "Salas disponibles"));
       const list = el("div", "display:flex;flex-direction:column;gap:6px;");
@@ -614,7 +726,25 @@
         ul.appendChild(el("div", null, (p.isHost ? "👑 " : "🎮 ") + (p.player_name || "Jugador")));
       }
       panel.appendChild(ul);
-      const leave = el("button", BTN_CSS.replace("#5865F2", "#c0392b") + "width:100%;", "Salir de la sala");
+      // Chat
+      chatBox = el("div", "height:110px;overflow:auto;background:rgba(0,0,0,.35);border-radius:8px;padding:6px 8px;" +
+        "font-size:12px;margin-bottom:6px;");
+      panel.appendChild(chatBox);
+      const crow = el("div", "display:flex;gap:6px;margin-bottom:10px;");
+      const ci = el("input", "flex:1;min-width:0;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,.25);background:rgba(0,0,0,.4);color:#fff;");
+      ci.placeholder = "Escribe un mensaje..."; ci.maxLength = 200;
+      // que las teclas escritas no lleguen al emulador
+      for (const ev of ["keydown", "keyup", "keypress"]) ci.addEventListener(ev, (k) => k.stopPropagation());
+      ci.addEventListener("keydown", (k) => { if (k.key === "Enter") { sendChat(ci.value); ci.value = ""; } });
+      const cs = el("button", BTN_CSS + "padding:8px 12px;", "➤");
+      cs.addEventListener("click", () => { sendChat(ci.value); ci.value = ""; ci.focus(); });
+      crow.appendChild(ci); crow.appendChild(cs);
+      panel.appendChild(crow);
+      drawChat();
+      if (role === "host") {
+        panel.appendChild(restartButton("margin-bottom:8px;", false));
+      }
+      const leave = el("button", BTN_CSS.replace("rgba(255,255,255,.14)", "rgba(192,57,43,.85)") + "width:100%;", "Salir de la sala");
       leave.addEventListener("click", () => leaveRoom("Saliste de la sala."));
       panel.appendChild(leave);
     }
@@ -631,7 +761,7 @@
     if (!ids.length) { cur.appendChild(el("div", "color:#888;font-size:13px;", "No hay salas abiertas para este juego.")); return; }
     for (const sid of ids) {
       const r = rooms[sid];
-      const row = el("div", "display:flex;align-items:center;justify-content:space-between;gap:8px;background:#0f1013;border-radius:8px;padding:8px 10px;");
+      const row = el("div", "display:flex;align-items:center;justify-content:space-between;gap:8px;background:rgba(255,255,255,.08);border-radius:8px;padding:8px 10px;");
       const info = el("div", "min-width:0;");
       info.appendChild(el("div", "overflow:hidden;text-overflow:ellipsis;white-space:nowrap;", r.room_name));
       info.appendChild(el("div", "font-size:12px;color:#888;", (r.player_name || "") + " · " + r.current + "/" + r.max));
